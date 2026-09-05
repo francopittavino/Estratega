@@ -12,8 +12,10 @@ jugadores con foto, armar partidas eligiendo participantes, anotar puntos
 por ronda con botones rápidos, cerrar rondas, finalizar la partida en
 cualquier momento y llevar un ranking histórico de victorias.
 
-- Repo: https://github.com/francopittavino/Estratega
-- Deploy: https://vercel.com/franco-p-s-projects/estratega
+- Repo: https://github.com/francopittavino/Estratega (rama `main`, con
+  auto-deploy a Vercel en cada push desde la tanda 6).
+- App en vivo: https://estratega-taupe.vercel.app
+- Dashboard de Vercel: https://vercel.com/franco-p-s-projects/estratega
 - Stack: Next.js 16 (App Router, Turbopack) + TypeScript + Tailwind v4 +
   Prisma (Postgres) + Vercel Blob (fotos de perfil).
 - Sin login: la app es de acceso libre (decisión del usuario, ver
@@ -31,11 +33,11 @@ token de Blob.
 
 ## Estado actual (última sesión: 2026-09-04)
 
-Primera sesión (cinco tandas). Se armó el proyecto completo desde cero
-(el repo estaba vacío, sin commits), se implementó el MVP funcional y
-después, en la misma sesión, se hicieron cuatro rondas de ajustes visuales
-a partir de feedback del usuario. Todavía no hay ningún commit pusheado
-(el usuario pidió esperar en la tanda 2 y no se volvió a tocar el tema).
+Primera sesión (seis tandas). Se armó el proyecto completo desde cero (el
+repo estaba vacío, sin commits), se implementó el MVP funcional, se
+hicieron cuatro rondas de ajustes visuales a partir de feedback del
+usuario, y en la tanda 6 se pusheó todo y se dejó andando en producción
+en Vercel: https://estratega-taupe.vercel.app.
 
 **Tanda 1 — MVP funcional:**
 
@@ -186,24 +188,79 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
   jugadores, nueva partida y el menú lateral (que también usaba `bg-card`
   y se corrigió solo).
 
+**Tanda 6 — push + deploy real a Vercel:**
+
+- Se hizo `git push` de los 6 commits acumulados a
+  `github.com/francopittavino/Estratega` (rama `main`), a pedido del
+  usuario. El proyecto de Vercel ya estaba conectado a ese repo (no se
+  sabía hasta este momento), así que el push disparó solo un deploy a
+  producción.
+- Para manejar el deploy hizo falta acceso de Vercel CLI: el usuario
+  corrió `npx vercel login` (dispositivo/OAuth) y a partir de ahí Claude
+  operó la CLI ya autenticada localmente (`vercel link`, `vercel env`,
+  `vercel inspect`, `vercel blob`, y llamadas directas a la API REST de
+  Vercel con el token guardado en
+  `AppData/Roaming/xdg.data/com.vercel.cli/auth.json` para lo que la CLI
+  no cubre).
+- El primer deploy automático quedó "Ready" pero la app entera devolvía
+  404 en todas las rutas. Dos problemas de configuración del proyecto en
+  Vercel (no del código), encontrados y corregidos vía API:
+  1. El **Framework Preset** del proyecto estaba en `"Other"` en vez de
+     `"nextjs"` (se ve con `vercel project inspect estratega`). Con eso,
+     Vercel no corría los hooks de Next.js (`modifyConfig`/
+     `onBuildComplete`) al buildear, y el resultado no quedaba enrutado
+     aunque el build "pasara". Se corrigió con un `PATCH` a
+     `api.vercel.com/v9/projects/estratega` (`framework: "nextjs"`).
+  2. Encima estaba activa la **Vercel Deployment Protection** (SSO) del
+     proyecto (`ssoProtection.deploymentType: "all_except_custom_domains"`),
+     que exige login de Vercel para ver CUALQUIER deployment que no sea
+     un dominio propio — bloqueaba el acceso público a la app entera, algo
+     que no tiene sentido para este proyecto (acceso libre, sin login,
+     sin dominio propio todavía). Se desactivó con el mismo `PATCH`
+     (`ssoProtection: null`).
+  3. Con eso corregido y un deploy nuevo (`vercel --prod`), la app cargó
+     bien, pero crear un jugador fallaba en producción con
+     `Error: Vercel Blob: Cannot use public access on a private store`
+     (visto con `vercel logs`). El Blob store del proyecto
+     (`estratega-blob`) se había creado en modo **privado**, y el código
+     siempre sube fotos con `access: "public"`. El modo de acceso de un
+     store de Blob se fija al crearlo y no se puede cambiar después. Como
+     el store viejo estaba vacío (0 archivos), se creó uno nuevo público
+     (`estratega-blob-public`, vía `vercel blob create-store --access
+     public`) y se conectó al proyecto — eso generó solo la env var
+     `BLOB_READ_WRITE_TOKEN` que faltaba desde el principio. El store
+     viejo (privado, vacío) quedó sin usar en la cuenta de Vercel; no se
+     borró (no era necesario y el comando para borrarlo quedó bloqueado
+     por el clasificador de permisos del entorno).
+  4. De paso se endureció el chequeo de "¿hay una foto adjunta?" en
+     `createPlayer`/`updatePlayerPhoto` (ver commit `7419135`): además de
+     `photo.size > 0` ahora también exige `photo.name` no vacío.
+- **Estado final probado**: la app está viva en
+  https://estratega-taupe.vercel.app, conectada a la base de Postgres
+  real, y quedó pendiente reverificar el alta de jugadores (con y sin
+  foto) contra el Blob store nuevo después del último deploy — la sesión
+  se cortó ahí, retomar verificando eso antes de dar el deploy por
+  cerrado del todo.
+
 ### Falta para que funcione en producción
 
-1. ~~Crear la base de datos Postgres~~ — LISTO: el usuario ya tiene una
-   base de Prisma Data Platform, y esta sesión ya le aplicó la migración
-   inicial (`npx prisma migrate deploy`). Falta cargar
-   `DATABASE_URL`/`DATABASE_URL_UNPOOLED` como env vars en el proyecto de
-   Vercel (hoy solo están en el `.env` local, gitignorado).
-2. **Conseguir `BLOB_READ_WRITE_TOKEN`** (Vercel/dashboard del store de
-   Blob → pestaña de tokens/`.env.local`) y cargarlo como env var, tanto
-   local como en Vercel. Sin esto, subir o cambiar fotos va a fallar.
-3. Conectar el repo de GitHub al proyecto de Vercel si todavía no está
-   conectado (deploy automático en cada push a `main`).
-4. Hacer el push del commit (el usuario pidió esperar — confirmar con él
-   antes de pushear; a esta altura ya son 3 tandas de cambios sin
-   pushear).
-5. Probar en producción el flujo completo, en particular la subida/cambio
-   de fotos (necesita el token de Blob) y el borrado de partida con
-   contraseña (no se probaron en vivo en esta sesión).
+Todo lo que estaba en esta lista en tandas anteriores (crear la base,
+conseguir el token de Blob, conectar el repo a Vercel, pushear) **ya está
+resuelto** — ver tanda 6. Lo que queda:
+
+1. Reverificar en producción (https://estratega-taupe.vercel.app) que
+   crear un jugador con foto y sin foto funciona bien después del deploy
+   con el Blob store nuevo — se corrigió pero no se re-probó en vivo
+   antes de que se cortara la sesión.
+2. Probar en producción el borrado de partida con contraseña (nunca se
+   probó en vivo, ni local ni en prod, porque dispara un
+   `window.prompt` que bloquea la automatización del navegador).
+3. Si se quiere un dominio propio en vez de `estratega-taupe.vercel.app`,
+   configurarlo en Vercel (Settings → Domains). No es necesario para que
+   funcione, es solo estético.
+4. Opcional: borrar el Blob store viejo (`estratega-blob`, privado,
+   vacío, sin usar) desde el dashboard de Vercel — no rompe nada si se
+   deja, pero no sirve para nada.
 
 ### Pendiente / no pedido todavía (no implementado a propósito)
 

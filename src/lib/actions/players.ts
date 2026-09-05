@@ -19,6 +19,7 @@ export async function createPlayer(formData: FormData) {
     const blob = await put(`jugadores/${crypto.randomUUID()}.${ext}`, photo, {
       access: "public",
       addRandomSuffix: false,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
     });
     photoUrl = blob.url;
   }
@@ -43,6 +44,7 @@ export async function updatePlayerPhoto(playerId: string, formData: FormData) {
   const blob = await put(`jugadores/${crypto.randomUUID()}.${ext}`, photo, {
     access: "public",
     addRandomSuffix: false,
+    token: process.env.BLOB_READ_WRITE_TOKEN,
   });
 
   await prisma.player.update({
