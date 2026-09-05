@@ -29,3 +29,27 @@ export async function createPlayer(formData: FormData) {
   revalidatePath("/jugadores");
   revalidatePath("/partidas/nueva");
 }
+
+// La foto de un jugador se puede reemplazar en cualquier momento, incluso
+// con partidas en curso: no afecta puntajes ni historial, solo la imagen.
+export async function updatePlayerPhoto(playerId: string, formData: FormData) {
+  const photo = formData.get("photo");
+  if (!(photo instanceof File) || photo.size === 0) {
+    throw new Error("Elegí una foto");
+  }
+
+  const ext = photo.name.split(".").pop() || "jpg";
+  const blob = await put(`jugadores/${crypto.randomUUID()}.${ext}`, photo, {
+    access: "public",
+    addRandomSuffix: false,
+  });
+
+  await prisma.player.update({
+    where: { id: playerId },
+    data: { photoUrl: blob.url },
+  });
+
+  revalidatePath("/jugadores");
+  revalidatePath("/partidas");
+  revalidatePath("/partidas/nueva");
+}

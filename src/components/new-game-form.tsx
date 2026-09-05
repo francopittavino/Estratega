@@ -42,9 +42,9 @@ export function NewGameForm({ players }: { players: Player[] }) {
               <button
                 type="button"
                 onClick={() => toggle(player.id)}
-                className={`w-full flex items-center gap-2 rounded-lg border p-2 text-left transition-colors ${
+                className={`w-full flex items-center gap-2 rounded-lg border-2 p-2 text-left transition-colors ${
                   active
-                    ? "border-utn-blue bg-utn-blue/10"
+                    ? "border-utn-blue bg-utn-blue/25"
                     : "border-border bg-card hover:border-utn-blue/50"
                 }`}
               >
@@ -53,9 +53,12 @@ export function NewGameForm({ players }: { players: Player[] }) {
                   photoUrl={player.photoUrl}
                   size={32}
                 />
-                <span className="text-sm font-medium truncate">
+                <span className="text-sm font-medium truncate flex-1">
                   {player.name}
                 </span>
+                {active && (
+                  <span className="text-utn-blue text-base leading-none">✓</span>
+                )}
               </button>
             </li>
           );

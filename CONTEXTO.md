@@ -21,25 +21,63 @@ cualquier momento y llevar un ranking histórico de victorias.
 
 ## Estado actual (última sesión: 2026-09-04)
 
-Primera sesión. Se armó el proyecto completo desde cero (el repo estaba
-vacío, sin commits) y se implementó el MVP funcional:
+Primera sesión (dos tandas). Se armó el proyecto completo desde cero (el
+repo estaba vacío, sin commits), se implementó el MVP funcional y después,
+en la misma sesión, se hizo un rediseño grande a partir de feedback
+estético del usuario. Todavía no hay ningún commit pusheado (el usuario
+pidió esperar).
+
+**Tanda 1 — MVP funcional:**
 
 - Scaffold Next.js 16 + TS + Tailwind, limpiado de boilerplate.
 - Modelo de datos en `prisma/schema.prisma`: `Player`, `Game`,
   `GameParticipant`, `Round`, `RoundScore`.
-- Server actions en `src/lib/actions/players.ts` y `src/lib/actions/games.ts`:
-  `createPlayer`, `createGame`, `setRoundScore`, `closeRound`, `finishGame`.
-- Páginas: `/jugadores` (alta de jugadores con foto), `/partidas` (listado
-  en curso/finalizadas), `/partidas/nueva` (elegir participantes),
-  `/partidas/[id]` (anotador en vivo), `/tops` (ranking histórico por
-  victorias).
-- Header con emblema oficial de la UTN (bajado de Wikimedia Commons,
-  dominio público) y título "El Estratega / de la UTN".
-- Probado end-to-end localmente con SQLite temporal (no se commiteó nada de
-  eso): alta de jugadores, partida de 3 jugadores, corrección de puntaje
-  antes de cerrar ronda, cierre de ronda, finalización con empate triple
-  (se verificó que los 3 quedan marcados ganadores y suman 1 victoria cada
-  uno). `npm run build` pasa limpio.
+- Server actions base en `src/lib/actions/players.ts` y
+  `src/lib/actions/games.ts`: `createPlayer`, `createGame`,
+  `setRoundScore`, `closeRound`, `finishGame`.
+- Páginas: `/jugadores`, `/partidas`, `/partidas/nueva`, `/partidas/[id]`,
+  `/tops`.
+- Emblema oficial de la UTN (bajado de Wikimedia Commons, dominio público).
+
+**Tanda 2 — rediseño estético (feedback del usuario, ver "Decisiones de
+producto" más abajo):**
+
+- Modo oscuro fijo (no depende de `prefers-color-scheme`, es la única
+  paleta de la app).
+- Home (`/`) dejó de redirigir a `/partidas`: ahora es una landing con el
+  logo UTN grande, título "EL ESTRATEGA" animado (gradiente + sombra en
+  capas tipo 3D + pop-in al cargar, todo en CSS puro, ver `.hero-title` en
+  `globals.css`), un único botón "Iniciar partida" (va a
+  `/partidas/nueva`) y un podio animado (`src/components/podium.tsx`) con
+  el top 3 actual por victorias.
+- Nav superior reemplazada por un menú lateral desplegable
+  (`src/components/side-nav.tsx`): el header ahora es una barra fina con
+  logo chico + botón hamburguesa.
+- Fotos de jugador editables en cualquier momento: click/tap sobre el
+  avatar en `/jugadores` abre el selector de archivo
+  (`src/components/editable-player-avatar.tsx` +
+  `updatePlayerPhoto` en `players.ts`).
+- Eliminar partidas con contraseña compartida "estratega"
+  (`deleteGame` en `games.ts` + `src/components/delete-game-button.tsx`,
+  botón de tacho en `/partidas`). Si la partida borrada estaba finalizada,
+  se descuenta la victoria a quien la había ganado (para no inflar
+  `/tops`).
+- "Volver una ronda atrás" durante una partida en curso (`goBackOneRound`
+  en `games.ts` + botón en `game-board.tsx`, solo visible si hay una ronda
+  anterior cerrada): descarta la ronda abierta actual, resta los puntos de
+  la última ronda cerrada y la vuelve a abrir para poder recargarlos.
+- El ranking de `/tops` ya contaba solo victorias reales (no
+  participaciones) desde la tanda 1 — el usuario lo confirmó, no hizo
+  falta cambiar esa lógica.
+- Probado de nuevo end-to-end con SQLite temporal (no commiteado): alta de
+  jugadores, selección con checkmarks, ronda con corrección, "volver una
+  ronda" (verificado que revierte los totales y reabre la ronda con los
+  valores previos cargados), finalización con ganador único (Franco 8 vs
+  Maru 1), podio en home reflejando la victoria. No se probó en vivo
+  "eliminar partida" (dispara un `window.prompt`, que bloquea la
+  automatización del navegador) ni la subida real de fotos (no hay token
+  de Blob en local) — la lógica de ambas se revisó a mano.
+- `npm run build`, `tsc --noEmit` y `eslint` pasan limpios.
 
 ### Falta para que funcione en producción
 
@@ -55,15 +93,20 @@ vacío, sin commits) y se implementó el MVP funcional:
    `prisma generate`, no migra).
 4. Conectar el repo de GitHub al proyecto de Vercel si todavía no está
    conectado (deploy automático en cada push a `main`).
-5. Probar en producción el flujo completo, en particular la subida de
-   fotos (no se pudo probar localmente por falta de token de Blob).
+5. Hacer el push del commit (el usuario pidió esperar en la última
+   respuesta de esta sesión — confirmar con él antes de pushear).
+6. Probar en producción el flujo completo, en particular la subida/cambio
+   de fotos y el borrado de partida con contraseña (no se pudieron probar
+   en vivo en esta sesión, ver arriba).
 
 ### Pendiente / no pedido todavía (no implementado a propósito)
 
-- Borrar o editar jugadores/partidas ya creadas.
-- Autenticación (el usuario eligió acceso libre sin login).
+- Editar jugadores más allá de la foto (nombre, borrar jugador).
+- Autenticación real (el usuario eligió acceso libre sin login; el borrado
+  de partidas usa una contraseña compartida hardcodeada, no es auth real).
 - Puntajes negativos o fuera de +0..+5 (el usuario eligió solo botones
   rápidos, sin carga manual).
+- Deshacer más de una ronda atrás (solo se puede volver un paso).
 
 ## Decisiones de producto (respuestas del usuario, 2026-09-04)
 
@@ -85,6 +128,21 @@ vacío, sin commits) y se implementó el MVP funcional:
   ronda abierta al tocar "Finalizar partida", se suman antes de cerrar. Si
   la ronda abierta no tiene ningún puntaje cargado, se descarta sin sumar
   nada.
+- **Estética (feedback 2026-09-04)**: modo oscuro fijo, título animado
+  tipo 3D en la home, menú lateral en vez de nav superior, un solo botón
+  en la home ("Iniciar partida"), podio animado con el top 3 debajo. Ver
+  detalle en "Estado actual".
+- **Cambiar foto en cualquier momento**: no hay restricción de estado de
+  partida ni de tiempo — se puede cambiar la foto de un jugador aunque
+  esté participando de una partida en curso; solo actualiza `photoUrl`.
+- **Eliminar partida**: contraseña compartida fija `"estratega"` (no es
+  por-usuario, es la misma para cualquiera que la sepa). Si la partida
+  estaba finalizada, se descuenta 1 victoria a cada ganador registrado
+  para no dejar el ranking de `/tops` inflado con partidas borradas.
+- **Volver una ronda atrás**: solo permite retroceder un paso (de la
+  ronda abierta a la última cerrada), no un historial completo. Si hay
+  puntajes cargados en la ronda abierta al volver atrás, se pierden (se
+  avisa con un `confirm` antes de ejecutar).
 
 ## Decisiones técnicas y por qué
 
@@ -119,12 +177,18 @@ vacío, sin commits) y se implementó el MVP funcional:
 ```
 prisma/schema.prisma          modelos: Player, Game, GameParticipant, Round, RoundScore
 src/lib/prisma.ts             singleton de PrismaClient
-src/lib/actions/players.ts    createPlayer (con subida de foto a Blob)
-src/lib/actions/games.ts      createGame, setRoundScore, closeRound, finishGame
-src/components/site-header.tsx   header con logo UTN + nav (Partidas/Jugadores/Tops)
-src/components/game-board.tsx    UI del anotador en vivo (client component)
-src/components/new-game-form.tsx selector de participantes (client component)
-src/components/player-avatar.tsx avatar con foto o iniciales
+src/lib/actions/players.ts    createPlayer, updatePlayerPhoto (subida a Blob)
+src/lib/actions/games.ts      createGame, setRoundScore, closeRound, finishGame,
+                               goBackOneRound, deleteGame (contraseña "estratega")
+src/components/site-header.tsx      header fino: logo chico + botón hamburguesa
+src/components/side-nav.tsx         menú lateral desplegable (Inicio/Partidas/Jugadores/Tops)
+src/components/podium.tsx           podio animado del top 3 (home)
+src/components/game-board.tsx       UI del anotador en vivo (client component)
+src/components/new-game-form.tsx    selector de participantes (client component)
+src/components/player-avatar.tsx    avatar con foto o iniciales (solo lectura)
+src/components/editable-player-avatar.tsx  avatar + cambio de foto (click abre file picker)
+src/components/delete-game-button.tsx      botón de tacho con prompt de contraseña
+src/app/page.tsx               home: título animado + "Iniciar partida" + podio
 src/app/jugadores/page.tsx
 src/app/partidas/page.tsx
 src/app/partidas/nueva/page.tsx

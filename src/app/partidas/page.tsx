@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { PlayerAvatar } from "@/components/player-avatar";
+import { DeleteGameButton } from "@/components/delete-game-button";
 
 export const dynamic = "force-dynamic";
 
@@ -66,10 +67,13 @@ function GameSection({
       ) : (
         <ul className="flex flex-col gap-2">
           {games.map((game) => (
-            <li key={game.id}>
+            <li
+              key={game.id}
+              className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-utn-blue transition-colors"
+            >
               <Link
                 href={`/partidas/${game.id}`}
-                className="bg-card border border-border rounded-lg p-4 flex items-center justify-between gap-4 hover:border-utn-blue transition-colors"
+                className="flex-1 min-w-0 flex items-center gap-4"
               >
                 <div className="flex -space-x-2">
                   {game.participants.map((p) => (
@@ -90,7 +94,7 @@ function GameSection({
                   </p>
                 </div>
                 {game.status === "FINISHED" && (
-                  <span className="text-xs font-medium bg-accent/20 text-utn-blue-dark rounded-full px-2 py-1 shrink-0">
+                  <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-1 shrink-0">
                     🏆{" "}
                     {game.participants
                       .filter((p) => p.isWinner)
@@ -99,6 +103,7 @@ function GameSection({
                   </span>
                 )}
               </Link>
+              <DeleteGameButton gameId={game.id} />
             </li>
           ))}
         </ul>

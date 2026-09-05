@@ -2,7 +2,12 @@
 
 import { useTransition } from "react";
 import { PlayerAvatar } from "@/components/player-avatar";
-import { closeRound, finishGame, setRoundScore } from "@/lib/actions/games";
+import {
+  closeRound,
+  finishGame,
+  goBackOneRound,
+  setRoundScore,
+} from "@/lib/actions/games";
 
 const QUICK_POINTS = [0, 1, 2, 3, 4, 5];
 
@@ -55,14 +60,33 @@ export function GameBoard({
     });
   }
 
+  function handleGoBack() {
+    if (!confirm("¿Volver una ronda atrás? Se pierde lo cargado en esta ronda y se reabre la anterior.")) {
+      return;
+    }
+    startTransition(async () => {
+      await goBackOneRound(gameId);
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-bold">
           {status === "IN_PROGRESS" ? `Ronda ${roundNumber}` : "Partida finalizada"}
         </h1>
         {status === "IN_PROGRESS" && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {roundNumber > 1 && (
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleGoBack}
+                className="border border-border text-muted rounded-md px-4 py-2 text-sm font-medium hover:border-utn-blue/50 hover:text-foreground transition-colors disabled:opacity-60"
+              >
+                ↩ Volver una ronda
+              </button>
+            )}
             <button
               type="button"
               disabled={isPending}

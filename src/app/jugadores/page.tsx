@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createPlayer } from "@/lib/actions/players";
-import { PlayerAvatar } from "@/components/player-avatar";
+import { EditablePlayerAvatar } from "@/components/editable-player-avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -48,9 +48,14 @@ export default async function JugadoresPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-semibold text-lg">
-          Jugadores ({players.length})
-        </h2>
+        <div>
+          <h2 className="font-semibold text-lg">
+            Jugadores ({players.length})
+          </h2>
+          {players.length > 0 && (
+            <p className="text-xs text-muted">Tocá la foto para cambiarla.</p>
+          )}
+        </div>
         {players.length === 0 ? (
           <p className="text-muted text-sm">
             Todavía no hay jugadores cargados.
@@ -62,7 +67,8 @@ export default async function JugadoresPage() {
                 key={player.id}
                 className="bg-card border border-border rounded-lg p-3 flex items-center gap-3"
               >
-                <PlayerAvatar
+                <EditablePlayerAvatar
+                  playerId={player.id}
                   name={player.name}
                   photoUrl={player.photoUrl}
                   size={44}

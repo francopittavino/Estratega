@@ -154,4 +154,79 @@ export async function finishGame(gameId: string) {
   revalidatePath(`/partidas/${gameId}`);
   revalidatePath("/partidas");
   revalidatePath("/tops");
+  revalidatePath("/");
+}
+
+// Vuelve la ronda abierta actual a la ronda cerrada anterior, por si hubo
+// un error de posición: descarta la ronda abierta y resta los puntos de la
+// última ronda cerrada para poder recargarlos.
+export async function goBackOneRound(gameId: string) {
+  await prisma.$transaction(async (tx) => {
+    const game = await tx.game.findUnique({ where: { id: gameId } });
+    if (!game || game.status !== "IN_PROGRESS") {
+      throw new Error("La partida no está en curso");
+    }
+
+    const rounds = await tx.round.findMany({
+      where: { gameId },
+      orderBy: { number: "desc" },
+      take: 2,
+    });
+    const [current, previous] = rounds;
+    if (!current || current.closedAt || !previous || !previous.closedAt) {
+      throw new Error("No hay una ronda anterior a la que volver");
+    }
+
+    const previousScores = await tx.roundScore.findMany({
+      where: { roundId: previous.id },
+    });
+    for (const score of previousScores) {
+      await tx.gameParticipant.update({
+        where: { id: score.participantId },
+        data: { totalPoints: { decrement: score.points } },
+      });
+    }
+
+    await tx.round.delete({ where: { id: current.id } });
+    await tx.round.update({
+      where: { id: previous.id },
+      data: { closedAt: null },
+    });
+  });
+
+  revalidatePath(`/partidas/${gameId}`);
+}
+
+const DELETE_PASSWORD = "estratega";
+
+export async function deleteGame(gameId: string, password: string) {
+  if (password !== DELETE_PASSWORD) {
+    throw new Error("Contraseña incorrecta");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const game = await tx.game.findUnique({
+      where: { id: gameId },
+      include: { participants: true },
+    });
+    if (!game) return;
+
+    if (game.status === "FINISHED") {
+      const winnerPlayerIds = game.participants
+        .filter((p) => p.isWinner)
+        .map((p) => p.playerId);
+      if (winnerPlayerIds.length > 0) {
+        await tx.player.updateMany({
+          where: { id: { in: winnerPlayerIds } },
+          data: { wins: { decrement: 1 } },
+        });
+      }
+    }
+
+    await tx.game.delete({ where: { id: gameId } });
+  });
+
+  revalidatePath("/partidas");
+  revalidatePath("/tops");
+  revalidatePath("/");
 }
