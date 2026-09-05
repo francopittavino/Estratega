@@ -31,9 +31,9 @@ base real. Si en algún momento hay dudas sobre exposición de ese chat,
 rotar la contraseña de la base (dashboard de Prisma/Vercel) y regenerar el
 token de Blob.
 
-## Estado actual (última sesión: 2026-09-04)
+## Estado actual (última sesión: 2026-09-04/05, misma conversación)
 
-Primera sesión (siete tandas). Se armó el proyecto completo desde cero (el
+Primera sesión (ocho tandas). Se armó el proyecto completo desde cero (el
 repo estaba vacío, sin commits), se implementó el MVP funcional, se
 hicieron cuatro rondas de ajustes visuales a partir de feedback del
 usuario, en la tanda 6 se pusheó todo y se dejó andando en producción en
@@ -294,6 +294,35 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
     es el mismo patrón ya validado en producción para `deleteGame`, así
     que se commiteó igual, pero si algo no anda al respecto, empezar por
     ahí.
+
+**Tanda 8 — dos bugs reales reportados por el usuario jugando de verdad:**
+
+- **"Se cae cuando pongo foto"**: Next.js limita a **1MB** el body de una
+  Server Action por defecto. Una foto sacada con el celular casi siempre
+  pesa más (el usuario lo notó recién al usar fotos reales, no los
+  archivos chicos con los que se había probado antes). Se subió el límite
+  a `10mb` en `next.config.ts`
+  (`experimental.serverActions.bodySizeLimit`). Probado con una foto real
+  de 7.3MB en local, subió bien.
+- **"Le sumó punto al primero y al segundo"**: `closeRound` y `finishGame`
+  hacían "leer estado → decidir → escribir" sin ninguna protección contra
+  dos llamadas concurrentes. Si dos personas tienen la partida abierta
+  cada una en su celular y tocan "Terminar ronda" o "Finalizar partida"
+  casi al mismo tiempo, las dos transacciones podían leer el mismo estado
+  "todavía no cerrado" y las dos procesaban el cierre por separado —
+  podía terminar sumando puntos de una ronda dos veces, o marcando
+  ganador (y sumando victoria) a partir de dos cálculos distintos hechos
+  con fotos del estado en momentos ligeramente distintos. Se arregló
+  haciendo que ambas funciones reclamen la fila primero con un
+  `updateMany` condicional (`where: { ..., status/closedAt: valor viejo
+  }`) — la segunda llamada ve `count: 0` y no toca nada más. Verificado
+  simulando dos `finishGame` concurrentes contra la misma partida sin
+  empate real: antes esto podía acreditar a los dos, después solo se
+  procesa uno. **No se pudo confirmar con los datos reales** del bug
+  original porque para cuando se investigó ya no había partidas
+  terminadas en la base (el usuario ya había hecho limpieza) — la
+  explicación es la más consistente con "primero y segundo" en vez de
+  "empate", pero no es 100% segura sin ver el caso real.
 
 ### Falta para que funcione en producción
 
