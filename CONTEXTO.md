@@ -33,11 +33,12 @@ token de Blob.
 
 ## Estado actual (última sesión: 2026-09-04)
 
-Primera sesión (seis tandas). Se armó el proyecto completo desde cero (el
+Primera sesión (siete tandas). Se armó el proyecto completo desde cero (el
 repo estaba vacío, sin commits), se implementó el MVP funcional, se
 hicieron cuatro rondas de ajustes visuales a partir de feedback del
-usuario, y en la tanda 6 se pusheó todo y se dejó andando en producción
-en Vercel: https://estratega-taupe.vercel.app.
+usuario, en la tanda 6 se pusheó todo y se dejó andando en producción en
+Vercel (https://estratega-taupe.vercel.app), y en la tanda 7 se ajustó el
+ícono de la app y se agregó contraseña para editar jugadores.
 
 **Tanda 1 — MVP funcional:**
 
@@ -263,6 +264,37 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
   partida real. Avisarle para que los borre él cuando termine esa
   partida, o pedir permiso antes de tocarlos.
 
+**Tanda 7 — ícono de la app y contraseña para editar jugadores:**
+
+- Se reemplazó el ícono de la app (antes el triángulo default de Next.js)
+  por un recorte cuadrado centrado del emblema de `fondo-estratega.jpg`,
+  como `src/app/icon.png` (convención de Next.js, no hace falta tocar
+  `layout.tsx`: genera solo el `<link rel="icon">`). `favicon.ico` se dejó
+  como estaba de respaldo. Este cambio se probó (visualmente, con el
+  Read tool) y se commiteó a pedido explícito del usuario ("committea eso
+  ya").
+- **Contraseña para editar jugadores**: usando la misma contraseña
+  compartida que ya existía para borrar partidas (`"estratega"`, ahora
+  centralizada en `src/lib/admin-password.ts` como
+  `ADMIN_PASSWORD`/`assertAdminPassword()`, usada tanto por `games.ts`
+  como por `players.ts`):
+  - `updatePlayerName` y `deletePlayer` ahora piden contraseña (via
+    `window.prompt`, mismo patrón que `deleteGame`).
+  - `updatePlayerPhoto` (cambiar la foto de un jugador **ya creado**)
+    también pide contraseña.
+  - `createPlayer` (alta de un jugador nuevo, con o sin foto) **no** pide
+    nada — a propósito, así lo pidió el usuario: la idea es que él sea el
+    único que sabe la contraseña y se la dé a quien necesite editar algo
+    puntual, pero cualquiera pueda seguir cargando jugadores nuevos sin
+    fricción.
+  - No se pudo probar el flujo completo en vivo (ni local ni en prod):
+    `window.prompt` bloquea la pestaña de Chrome bajo automatización (a
+    diferencia de `confirm`, que sí se resuelve solo) — se intentó una
+    vez en local, la pestaña quedó colgada y hubo que cerrarla. La lógica
+    es el mismo patrón ya validado en producción para `deleteGame`, así
+    que se commiteó igual, pero si algo no anda al respecto, empezar por
+    ahí.
+
 ### Falta para que funcione en producción
 
 Nada bloqueante. La app funciona de punta a punta en producción (ver
@@ -272,11 +304,10 @@ tanda 6). Lo que queda es menor/opcional:
    `TestProd3` y `TestProd4` de la base real — `TestProd3` está en una
    partida en curso del usuario, así que no se puede borrar hasta que esa
    partida se borre o termine.
-2. Probar en producción el borrado de partida con contraseña (nunca se
-   probó en vivo, ni local ni en prod, porque dispara un
-   `window.prompt` que bloquea la automatización del navegador) — la
-   lógica es simple y se revisó a mano, pero no hubo verificación en
-   vivo.
+2. Probar en producción, a mano (no vía Claude/automatización — `window.prompt`
+   la bloquea): borrar partida con contraseña, renombrar/borrar jugador
+   con contraseña, y cambiar la foto de un jugador ya creado con
+   contraseña. Ninguno de los tres se pudo verificar en vivo esta sesión.
 3. Si se quiere un dominio propio en vez de `estratega-taupe.vercel.app`,
    configurarlo en Vercel (Settings → Domains). No es necesario para que
    funcione, es solo estético.
@@ -343,6 +374,12 @@ tanda 6). Lo que queda es menor/opcional:
   chico de la UTN se sacó de la home porque el fondo ya cumple ese rol.
   La home se re-centró y se compactó el podio para que se vea todo
   (título + botón + podio) sin scroll.
+- **Contraseña para editar jugadores (tanda 7)**: el usuario quiere ser el
+  único que controla ediciones — crear un jugador (con o sin foto) es
+  libre para cualquiera, pero renombrar/borrar un jugador o cambiarle la
+  foto después de creado pide la misma contraseña que borrar partida
+  (`"estratega"`). La idea explícita del usuario: si alguien necesita
+  editar algo, él le pasa la contraseña en el momento.
 
 ## Decisiones técnicas y por qué
 
@@ -387,9 +424,12 @@ tanda 6). Lo que queda es menor/opcional:
 ```
 prisma/schema.prisma          modelos: Player, Game, GameParticipant, Round, RoundScore
 src/lib/prisma.ts             singleton de PrismaClient
-src/lib/actions/players.ts    createPlayer, updatePlayerPhoto, updatePlayerName, deletePlayer
+src/lib/admin-password.ts     ADMIN_PASSWORD ("estratega") + assertAdminPassword()
+src/lib/actions/players.ts    createPlayer (sin contraseña), updatePlayerPhoto,
+                               updatePlayerName, deletePlayer (estas 3 piden contraseña)
 src/lib/actions/games.ts      createGame, setRoundScore, closeRound, finishGame,
-                               goBackOneRound, deleteGame (contraseña "estratega")
+                               goBackOneRound, deleteGame (pide contraseña)
+src/app/icon.png               ícono de la app (recorte del emblema de fondo-estratega.jpg)
 src/components/side-nav.tsx         botón hamburguesa flotante + menú desde la izquierda
 src/components/podium.tsx           podio animado del top 3 (home)
 src/components/game-board.tsx       UI del anotador en vivo (client component)
