@@ -25,6 +25,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <div
+          aria-hidden
+          className="fixed inset-0 -z-20 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/fondo-estratega.jpg')" }}
+        />
+        <div aria-hidden className="fixed inset-0 -z-10 bg-background/65" />
         <SideNav />
         <main className="flex-1 w-full max-w-4xl mx-auto px-4 pt-16 pb-6 sm:px-6">
           {children}

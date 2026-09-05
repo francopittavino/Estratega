@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Podium } from "@/components/podium";
@@ -13,18 +12,10 @@ export default async function Home() {
   });
 
   return (
-    <div className="flex flex-col items-center gap-10 py-6 sm:py-10">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <Image
-          src="/utn-logo.jpg"
-          alt="Logo UTN"
-          width={92}
-          height={92}
-          className="rounded-xl bg-white p-1.5 shadow-lg shadow-black/40"
-          priority
-        />
+    <div className="flex flex-col items-center justify-center gap-6 min-h-[calc(100svh-5.5rem)] text-center">
+      <div>
         <h1 className="hero-title text-5xl sm:text-6xl">EL ESTRATEGA</h1>
-        <p className="text-muted tracking-widest text-sm uppercase">
+        <p className="text-muted tracking-widest text-sm uppercase mt-2">
           de la UTN
         </p>
       </div>
@@ -36,7 +27,7 @@ export default async function Home() {
         Iniciar partida
       </Link>
 
-      <div className="w-full flex flex-col items-center gap-4">
+      <div className="w-full flex flex-col items-center gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
           Top 3 actual
         </h2>

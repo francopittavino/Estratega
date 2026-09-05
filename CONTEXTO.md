@@ -31,11 +31,11 @@ token de Blob.
 
 ## Estado actual (última sesión: 2026-09-04)
 
-Primera sesión (tres tandas). Se armó el proyecto completo desde cero (el
-repo estaba vacío, sin commits), se implementó el MVP funcional y después,
-en la misma sesión, se hicieron dos rondas de rediseño a partir de
-feedback estético del usuario. Todavía no hay ningún commit pusheado (el
-usuario pidió esperar en la tanda 2).
+Primera sesión (cuatro tandas). Se armó el proyecto completo desde cero
+(el repo estaba vacío, sin commits), se implementó el MVP funcional y
+después, en la misma sesión, se hicieron tres rondas de ajustes visuales a
+partir de feedback del usuario. Todavía no hay ningún commit pusheado (el
+usuario pidió esperar en la tanda 2 y no se volvió a tocar el tema).
 
 **Tanda 1 — MVP funcional:**
 
@@ -125,6 +125,43 @@ producto" más abajo):**
   de fotos porque falta `BLOB_READ_WRITE_TOKEN` (el usuario solo pasó
   `BLOB_STORE_ID` y `BLOB_WEBHOOK_PUBLIC_KEY`, que son otra cosa).
 
+**Aclaración sobre un reporte de bug que no era tal**: después de la tanda
+3, el usuario reportó que la barra seguía azul, el menú aparecía a la
+derecha en `/partidas/nueva`, y que arriba a la izquierda veía un texto
+"El Estratega UTN" que no le gustaba. Se retestó todo en limpio (hard
+reload) y no se pudo reproducir nada de eso con el código de la tanda 3 —
+esos síntomas coinciden exactamente con la UI de **antes** de esa tanda
+(barra superior azul con el hamburguesa a la derecha). El usuario confirmó
+que refrescando en Chrome se veía bien: era caché/sesión vieja del
+navegador, no un bug real. Aun así, de esa misma queja salían dos pedidos
+válidos que sí se corrigieron: la tipografía del título (tenía un degradé
+animado en loop con perspectiva 3D que quedaba "raro") y la falta de
+relieve en las tarjetas (todo se veía muy liso). Si en el futuro aparece
+un reporte visual que no coincide con lo que hay en el código, vale la
+pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
+
+**Tanda 4 — fondo de pantalla con imagen temática:**
+
+- El usuario pasó una imagen (el emblema de la UTN estilizado en rojo/negro
+  con estética de tarot/cartas) y pidió usarla como fondo de toda la app.
+  Se guardó en `public/fondo-estratega.jpg` (convertida de PNG a JPEG
+  calidad 85 con `sharp`, de 2.4 MB a ~300 KB — el PNG original no se
+  commiteó). Se aplica en `src/app/layout.tsx` como una capa `fixed`
+  (`bg-cover bg-center`) detrás de todo el contenido, con otra capa
+  encima semitransparente (`bg-background/65`) para que el texto que cae
+  directo sobre el fondo siga siendo legible; el contenido dentro de las
+  tarjetas (`bg-card`, opaco) no se ve afectado.
+- Se sacó el logo chico de la UTN de la home (ya no hace falta, el fondo
+  ahora lleva el emblema de forma mucho más dramática).
+- La home se reordenó para centrarse verticalmente
+  (`justify-center` + `min-h-[calc(100svh-5.5rem)]`) y se achicó el podio
+  (avatares y barras más chicas, menos gap) para que el título, el botón
+  "Iniciar partida" y el podio entren en pantalla sin scroll incluso en
+  viewports bajos (probado en una ventana de 577px de alto).
+- Probado visualmente con datos de prueba en SQLite temporal (no
+  commiteado): se ve bien en home, jugadores, partidas/nueva y el
+  anotador en vivo; el menú lateral sigue funcionando igual.
+
 ### Falta para que funcione en producción
 
 1. ~~Crear la base de datos Postgres~~ — LISTO: el usuario ya tiene una
@@ -197,6 +234,12 @@ producto" más abajo):**
   claro en vez de romper el historial de esa partida (por la FK
   `Restrict` en el schema) — no se pidió explícitamente pero es la
   consecuencia lógica de no permitir huérfanos en `GameParticipant`.
+- **Fondo de imagen (tanda 4)**: la imagen que pasó el usuario (emblema
+  UTN estilo tarot, rojo/negro) es el fondo de **toda** la app, no solo
+  la home — fijo, con un overlay oscuro encima para legibilidad. El logo
+  chico de la UTN se sacó de la home porque el fondo ya cumple ese rol.
+  La home se re-centró y se compactó el podio para que se vea todo
+  (título + botón + podio) sin scroll.
 
 ## Decisiones técnicas y por qué
 
@@ -246,13 +289,16 @@ src/components/player-avatar.tsx    avatar con foto o iniciales (solo lectura)
 src/components/editable-player-avatar.tsx  avatar + cambio de foto (click abre file picker)
 src/components/player-card.tsx      tarjeta de jugador: avatar editable + nombre editable + borrar
 src/components/delete-game-button.tsx      botón de tacho con prompt de contraseña
-src/app/page.tsx               home: título animado + "Iniciar partida" + podio (sin barra arriba)
+src/app/page.tsx               home: título + "Iniciar partida" + podio, centrado, sin logo
+src/app/layout.tsx             fondo fijo de imagen + overlay oscuro (bg-background/65)
 src/app/jugadores/page.tsx
 src/app/partidas/page.tsx
 src/app/partidas/nueva/page.tsx
 src/app/partidas/[id]/page.tsx
 src/app/tops/page.tsx
-public/utn-logo.jpg           emblema UTN (dominio público, Wikimedia Commons)
+public/utn-logo.jpg            emblema UTN suelto (dominio público) — ya no se usa en ninguna
+                                página, quedó del diseño viejo; no hace daño pero se puede borrar
+public/fondo-estratega.jpg      fondo de pantalla de toda la app (imagen que pasó el usuario)
 ```
 
 No existe `src/components/site-header.tsx` — se borró en la tanda 3 junto
