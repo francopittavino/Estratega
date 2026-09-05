@@ -233,28 +233,50 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
      borró (no era necesario y el comando para borrarlo quedó bloqueado
      por el clasificador de permisos del entorno).
   4. De paso se endureció el chequeo de "¿hay una foto adjunta?" en
-     `createPlayer`/`updatePlayerPhoto` (ver commit `7419135`): además de
+     `createPlayer`/`updatePlayerPhoto` (commit `7419135`): además de
      `photo.size > 0` ahora también exige `photo.name` no vacío.
-- **Estado final probado**: la app está viva en
-  https://estratega-taupe.vercel.app, conectada a la base de Postgres
-  real, y quedó pendiente reverificar el alta de jugadores (con y sin
-  foto) contra el Blob store nuevo después del último deploy — la sesión
-  se cortó ahí, retomar verificando eso antes de dar el deploy por
-  cerrado del todo.
+  5. Con el store público conectado y ese fix, crear jugador CON foto
+     seguía fallando con el mismo error de "private store", incluso en
+     un deploy 100% nuevo (`vercel --prod --force`). Se confirmó con
+     `vercel env pull` que el valor real de `BLOB_READ_WRITE_TOKEN` sí
+     era del store nuevo (formato clásico
+     `vercel_blob_rw_1DpioCPzL60nrmvw_...`, con el ID del store público
+     adentro) — o sea la env var estaba bien. La hipótesis que terminó
+     funcionando: `@vercel/blob` en la versión instalada (`^2.8.0`)
+     prioriza algún descubrimiento automático (posiblemente vía
+     `VERCEL_OIDC_TOKEN`) del store "conectado" del proyecto por sobre
+     leer `BLOB_READ_WRITE_TOKEN` del `process.env` cuando no se pasa un
+     `token` explícito a `put()`, y ese descubrimiento seguía resolviendo
+     al store viejo (privado). Se arregló pasando
+     `token: process.env.BLOB_READ_WRITE_TOKEN` explícito en las dos
+     llamadas a `put()` (commit `5489bd7`). Después de ese deploy, subir
+     foto funcionó.
+- **Estado final probado, en vivo**: https://estratega-taupe.vercel.app
+  anda de punta a punta — se probó crear jugador con y sin foto, y
+  borrar jugador (bloqueado correctamente por la protección de FK cuando
+  el jugador ya está en una partida). El usuario ya estaba usando la app
+  en paralelo mientras se depuraba esto: hay un jugador real "Franco"
+  (con foto propia) y una partida en curso "TestProd3, Franco" creada por
+  él. **Quedaron dos jugadores de prueba sin borrar** (`TestProd3` y
+  `TestProd4`, de esta sesión) porque `TestProd3` ya forma parte de esa
+  partida en curso del usuario — no se forzó el borrado para no tocar su
+  partida real. Avisarle para que los borre él cuando termine esa
+  partida, o pedir permiso antes de tocarlos.
 
 ### Falta para que funcione en producción
 
-Todo lo que estaba en esta lista en tandas anteriores (crear la base,
-conseguir el token de Blob, conectar el repo a Vercel, pushear) **ya está
-resuelto** — ver tanda 6. Lo que queda:
+Nada bloqueante. La app funciona de punta a punta en producción (ver
+tanda 6). Lo que queda es menor/opcional:
 
-1. Reverificar en producción (https://estratega-taupe.vercel.app) que
-   crear un jugador con foto y sin foto funciona bien después del deploy
-   con el Blob store nuevo — se corrigió pero no se re-probó en vivo
-   antes de que se cortara la sesión.
+1. Borrar (o dejar que el usuario borre) los jugadores de prueba
+   `TestProd3` y `TestProd4` de la base real — `TestProd3` está en una
+   partida en curso del usuario, así que no se puede borrar hasta que esa
+   partida se borre o termine.
 2. Probar en producción el borrado de partida con contraseña (nunca se
    probó en vivo, ni local ni en prod, porque dispara un
-   `window.prompt` que bloquea la automatización del navegador).
+   `window.prompt` que bloquea la automatización del navegador) — la
+   lógica es simple y se revisó a mano, pero no hubo verificación en
+   vivo.
 3. Si se quiere un dominio propio en vez de `estratega-taupe.vercel.app`,
    configurarlo en Vercel (Settings → Domains). No es necesario para que
    funcione, es solo estético.
@@ -324,6 +346,12 @@ resuelto** — ver tanda 6. Lo que queda:
 
 ## Decisiones técnicas y por qué
 
+- **`put()` de `@vercel/blob` siempre con `token: process.env.BLOB_READ_WRITE_TOKEN`
+  explícito**, nunca implícito. Sin el `token` explícito, en este proyecto
+  el SDK terminaba resolviendo el store de Blob viejo (privado) en vez del
+  que realmente está en esa env var — ver tanda 6 para el detalle. Si en
+  el futuro se agrega otra llamada a `put()`/`del()`/etc., pasarle el
+  token siempre por las dudas.
 - **Prisma fijado en 6.19.3** (exacto, no `^`) para `prisma` y
   `@prisma/client`. Al instalar, npm resolvió por defecto `prisma@8.0.0-rc`
   (release candidate) contra `@prisma/client@7.10.0` (estable) — versiones
