@@ -57,12 +57,21 @@ export async function setRoundScore(
 
 export async function closeRound(gameId: string, roundId: string) {
   await prisma.$transaction(async (tx) => {
+    // Update condicional: si dos personas tocan "Terminar ronda" casi al
+    // mismo tiempo (cada una desde su celular), solo una debe poder
+    // cerrar la ronda y sumar los puntos. La segunda ve 0 filas afectadas
+    // y no hace nada más.
+    const claimed = await tx.round.updateMany({
+      where: { id: roundId, gameId, closedAt: null },
+      data: { closedAt: new Date() },
+    });
+    if (claimed.count === 0) return;
+
     const round = await tx.round.findUnique({
       where: { id: roundId },
       include: { scores: true },
     });
-    if (!round || round.gameId !== gameId) throw new Error("Ronda inválida");
-    if (round.closedAt) return;
+    if (!round) throw new Error("Ronda inválida");
 
     const game = await tx.game.findUnique({
       where: { id: gameId },
@@ -81,11 +90,6 @@ export async function closeRound(gameId: string, roundId: string) {
       });
     }
 
-    await tx.round.update({
-      where: { id: roundId },
-      data: { closedAt: new Date() },
-    });
-
     await tx.round.create({
       data: { gameId, number: round.number + 1 },
     });
@@ -96,6 +100,16 @@ export async function closeRound(gameId: string, roundId: string) {
 
 export async function finishGame(gameId: string) {
   await prisma.$transaction(async (tx) => {
+    // Update condicional: si dos personas tocan "Finalizar partida" casi
+    // al mismo tiempo (cada una desde su celular), solo una debe poder
+    // cerrarla y definir el ganador. La segunda ve 0 filas afectadas y no
+    // hace nada más (evita sumar victorias de más).
+    const claimed = await tx.game.updateMany({
+      where: { id: gameId, status: "IN_PROGRESS" },
+      data: { status: "FINISHED", finishedAt: new Date() },
+    });
+    if (claimed.count === 0) return;
+
     const game = await tx.game.findUnique({
       where: { id: gameId },
       include: {
@@ -103,7 +117,7 @@ export async function finishGame(gameId: string) {
         rounds: { where: { closedAt: null }, include: { scores: true } },
       },
     });
-    if (!game || game.status !== "IN_PROGRESS") return;
+    if (!game) return;
 
     const openRound = game.rounds[0];
     if (openRound && openRound.scores.length > 0) {
@@ -144,11 +158,6 @@ export async function finishGame(gameId: string) {
     await tx.player.updateMany({
       where: { id: { in: winnerPlayerIds } },
       data: { wins: { increment: 1 } },
-    });
-
-    await tx.game.update({
-      where: { id: gameId },
-      data: { status: "FINISHED", finishedAt: new Date() },
     });
   });
 

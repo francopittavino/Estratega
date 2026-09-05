@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    serverActions: {
+      // Las fotos de perfil (sacadas con el celular) suelen pesar varios
+      // MB; el límite por defecto de Next para Server Actions es 1MB.
+      bodySizeLimit: "10mb",
+    },
+  },
 };
 
 export default nextConfig;
