@@ -31,11 +31,11 @@ token de Blob.
 
 ## Estado actual (última sesión: 2026-09-04)
 
-Primera sesión (cuatro tandas). Se armó el proyecto completo desde cero
+Primera sesión (cinco tandas). Se armó el proyecto completo desde cero
 (el repo estaba vacío, sin commits), se implementó el MVP funcional y
-después, en la misma sesión, se hicieron tres rondas de ajustes visuales a
-partir de feedback del usuario. Todavía no hay ningún commit pusheado (el
-usuario pidió esperar en la tanda 2 y no se volvió a tocar el tema).
+después, en la misma sesión, se hicieron cuatro rondas de ajustes visuales
+a partir de feedback del usuario. Todavía no hay ningún commit pusheado
+(el usuario pidió esperar en la tanda 2 y no se volvió a tocar el tema).
 
 **Tanda 1 — MVP funcional:**
 
@@ -161,6 +161,30 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
 - Probado visualmente con datos de prueba en SQLite temporal (no
   commiteado): se ve bien en home, jugadores, partidas/nueva y el
   anotador en vivo; el menú lateral sigue funcionando igual.
+
+**Tanda 5 — tipografía del título + paleta neutra sin azul:**
+
+- El usuario no le gustó la tipografía de "EL ESTRATEGA" (pidió algo "más
+  agresivo") y notó que las tarjetas de jugadores/partidas tenían un fondo
+  azul oscuro que no combinaba con el tema rojo/negro. Ambas cosas venían
+  de la misma raíz: los tokens `--background`/`--card`/`--border` seguían
+  siendo los azules originales de la tanda 1 — solo se había cambiado
+  `--primary` a rojo, nunca los neutros.
+- Se cambiaron los neutros en `globals.css` a tonos negro/rojo oscuro:
+  `--background: #0b0808`, `--card: #1e1315`, `--border: #402226`,
+  `--muted: #a99194` (antes eran azulados: `#0a0e1a`, `#161f37`,
+  `#2c3859`, `#8891ab`). Esto corrige tanto las tarjetas como el overlay
+  del fondo de imagen (que antes tenía un ligerísimo tinte azul al
+  mezclarse con la imagen roja).
+- Para el título se sumó la fuente **Anton** (`next/font/google`, peso
+  400, ya es muy negra/condensada de por sí) solo para `.hero-title` en
+  `globals.css`, con `letter-spacing` más ajustado, un `skewX(-4deg)` y
+  una sombra en capas (rojo oscuro + negro) para dar sensación de peso y
+  agresividad. El resto de la tipografía de la app sigue en Geist Sans,
+  el pedido era específicamente sobre el título de la home.
+- Probado visualmente de nuevo con SQLite temporal: se ve bien en home,
+  jugadores, nueva partida y el menú lateral (que también usaba `bg-card`
+  y se corrigió solo).
 
 ### Falta para que funcione en producción
 

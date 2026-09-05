@@ -2,11 +2,11 @@
 
 :root {
   color-scheme: dark;
-  --background: #0a0e1a;
-  --foreground: #eef1f8;
-  --card: #161f37;
-  --border: #2c3859;
-  --muted: #8891ab;
+  --background: #0b0808;
+  --foreground: #f3ecec;
+  --card: #1e1315;
+  --border: #402226;
+  --muted: #a99194;
   --primary: #e5484d;
   --primary-dark: #b3232a;
   --accent: #ffb703;
@@ -45,13 +45,16 @@ body {
 
 .hero-title {
   display: inline-block;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-family: var(--font-anton), Impact, "Arial Narrow Bold", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
   line-height: 1;
   color: var(--primary);
+  transform: skewX(-4deg);
   text-shadow:
-    0 2px 0 #7a1c1f,
-    0 4px 14px rgba(0, 0, 0, 0.5);
+    2px 2px 0 #5c1417,
+    4px 4px 0 #3a0d0f,
+    0 6px 18px rgba(0, 0, 0, 0.6);
   animation: hero-title-in 0.5s ease-out both;
 }
 
