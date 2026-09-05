@@ -14,7 +14,7 @@ export async function createPlayer(formData: FormData) {
   const photo = formData.get("photo");
   let photoUrl: string | undefined;
 
-  if (photo instanceof File && photo.size > 0) {
+  if (photo instanceof File && photo.name && photo.size > 0) {
     const ext = photo.name.split(".").pop() || "jpg";
     const blob = await put(`jugadores/${crypto.randomUUID()}.${ext}`, photo, {
       access: "public",
@@ -35,7 +35,7 @@ export async function createPlayer(formData: FormData) {
 // con partidas en curso: no afecta puntajes ni historial, solo la imagen.
 export async function updatePlayerPhoto(playerId: string, formData: FormData) {
   const photo = formData.get("photo");
-  if (!(photo instanceof File) || photo.size === 0) {
+  if (!(photo instanceof File) || !photo.name || photo.size === 0) {
     throw new Error("Elegí una foto");
   }
 
