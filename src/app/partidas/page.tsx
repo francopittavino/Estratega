@@ -34,7 +34,7 @@ export default async function PartidasPage() {
         <h1 className="text-xl font-bold">Partidas</h1>
         <Link
           href="/partidas/nueva"
-          className="bg-primary text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-primary-dark transition-colors"
+          className="bg-primary text-white rounded-md shadow-md shadow-primary/20 px-4 py-2 text-sm font-medium hover:bg-primary-dark transition-colors"
         >
           + Nueva partida
         </Link>
@@ -69,7 +69,7 @@ function GameSection({
           {games.map((game) => (
             <li
               key={game.id}
-              className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-primary transition-colors"
+              className="bg-card border border-border shadow-lg shadow-black/30 rounded-lg p-4 flex items-center gap-4 hover:border-primary transition-colors"
             >
               <Link
                 href={`/partidas/${game.id}`}

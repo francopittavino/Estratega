@@ -24,7 +24,7 @@ export default async function TopsPage() {
           {players.map((player, index) => (
             <li
               key={player.id}
-              className="bg-card border border-border rounded-lg p-3 flex items-center gap-3"
+              className="bg-card border border-border shadow-lg shadow-black/30 rounded-lg p-3 flex items-center gap-3"
             >
               <span className="w-7 text-center font-semibold text-muted">
                 {MEDALS[index] ?? index + 1}

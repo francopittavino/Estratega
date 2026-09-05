@@ -47,7 +47,7 @@ export function PlayerCard({ player }: { player: Player }) {
   }
 
   return (
-    <li className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
+    <li className="bg-card border border-border shadow-lg shadow-black/30 rounded-lg p-3 flex items-center gap-3">
       <EditablePlayerAvatar
         playerId={player.id}
         name={player.name}

@@ -4,8 +4,8 @@
   color-scheme: dark;
   --background: #0a0e1a;
   --foreground: #eef1f8;
-  --card: #131a2c;
-  --border: #232d47;
+  --card: #161f37;
+  --border: #2c3859;
   --muted: #8891ab;
   --primary: #e5484d;
   --primary-dark: #b3232a;
@@ -31,51 +31,28 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
-/* Título animado tipo 3D para la home */
-@keyframes hero-title-pop {
+/* Título de la home: entrada suave, una sola vez, sin loops raros */
+@keyframes hero-title-in {
   0% {
     opacity: 0;
-    transform: perspective(700px) rotateX(30deg) translateY(24px) scale(0.92);
+    transform: translateY(16px);
   }
   100% {
     opacity: 1;
-    transform: perspective(700px) rotateX(0deg) translateY(0) scale(1);
-  }
-}
-
-@keyframes hero-title-shine {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
+    transform: translateY(0);
   }
 }
 
 .hero-title {
   display: inline-block;
   font-weight: 800;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   line-height: 1;
-  background-image: linear-gradient(
-    90deg,
-    #e5484d,
-    #ff9a8b,
-    #ffb703,
-    #e5484d
-  );
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--primary);
   text-shadow:
-    1px 1px 0 #2a0f10,
-    2px 2px 0 #2a0f10,
-    3px 3px 0 #2a0f10,
-    4px 4px 10px rgba(0, 0, 0, 0.55);
-  animation:
-    hero-title-pop 0.7s ease-out both,
-    hero-title-shine 7s linear 0.7s infinite;
+    0 2px 0 #7a1c1f,
+    0 4px 14px rgba(0, 0, 0, 0.5);
+  animation: hero-title-in 0.5s ease-out both;
 }
 
 /* Podio animado */

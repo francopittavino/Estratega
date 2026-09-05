@@ -11,7 +11,7 @@ export default async function JugadoresPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="bg-card border border-border rounded-xl p-4 sm:p-6">
+      <section className="bg-card border border-border shadow-lg shadow-black/30 rounded-xl p-4 sm:p-6">
         <h2 className="font-semibold text-lg mb-3">Nuevo jugador</h2>
         <form action={createPlayer} className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
@@ -40,7 +40,7 @@ export default async function JugadoresPage() {
           </div>
           <button
             type="submit"
-            className="bg-primary text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-primary-dark transition-colors"
+            className="bg-primary text-white rounded-md shadow-md shadow-primary/20 px-4 py-2 text-sm font-medium hover:bg-primary-dark transition-colors"
           >
             Agregar jugador
           </button>
