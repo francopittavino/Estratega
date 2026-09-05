@@ -23,9 +23,15 @@ export function PlayerCard({ player }: { player: Player }) {
       setEditing(false);
       return;
     }
+    const password = window.prompt("Contraseña para editar el jugador:");
+    if (password === null) {
+      setName(player.name);
+      setEditing(false);
+      return;
+    }
     startTransition(async () => {
       try {
-        await updatePlayerName(player.id, trimmed);
+        await updatePlayerName(player.id, trimmed, password);
       } catch (err) {
         alert(err instanceof Error ? err.message : "No se pudo renombrar");
         setName(player.name);
@@ -36,10 +42,13 @@ export function PlayerCard({ player }: { player: Player }) {
   }
 
   function handleDelete() {
-    if (!confirm(`¿Eliminar a ${player.name}?`)) return;
+    const password = window.prompt(
+      `Contraseña para eliminar a ${player.name}:`
+    );
+    if (password === null) return;
     startTransition(async () => {
       try {
-        await deletePlayer(player.id);
+        await deletePlayer(player.id, password);
       } catch (err) {
         alert(err instanceof Error ? err.message : "No se pudo eliminar");
       }

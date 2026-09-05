@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { assertAdminPassword } from "@/lib/admin-password";
 
 export async function createGame(playerIds: string[]) {
   const uniqueIds = Array.from(new Set(playerIds)).filter(Boolean);
@@ -197,12 +198,8 @@ export async function goBackOneRound(gameId: string) {
   revalidatePath(`/partidas/${gameId}`);
 }
 
-const DELETE_PASSWORD = "estratega";
-
 export async function deleteGame(gameId: string, password: string) {
-  if (password !== DELETE_PASSWORD) {
-    throw new Error("Contraseña incorrecta");
-  }
+  assertAdminPassword(password);
 
   await prisma.$transaction(async (tx) => {
     const game = await tx.game.findUnique({

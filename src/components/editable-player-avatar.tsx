@@ -21,8 +21,14 @@ export function EditablePlayerAvatar({
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const password = window.prompt("Contraseña para cambiar la foto:");
+    if (password === null) {
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
     const formData = new FormData();
     formData.set("photo", file);
+    formData.set("password", password);
     startTransition(async () => {
       try {
         await updatePlayerPhoto(playerId, formData);

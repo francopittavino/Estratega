@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { assertAdminPassword } from "@/lib/admin-password";
 
 export async function createPlayer(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -34,7 +35,11 @@ export async function createPlayer(formData: FormData) {
 
 // La foto de un jugador se puede reemplazar en cualquier momento, incluso
 // con partidas en curso: no afecta puntajes ni historial, solo la imagen.
+// A diferencia de la foto inicial (al crear el jugador), cambiarla después
+// pide la misma contraseña que borrar partida/jugador.
 export async function updatePlayerPhoto(playerId: string, formData: FormData) {
+  assertAdminPassword(String(formData.get("password") ?? ""));
+
   const photo = formData.get("photo");
   if (!(photo instanceof File) || !photo.name || photo.size === 0) {
     throw new Error("Elegí una foto");
@@ -57,7 +62,13 @@ export async function updatePlayerPhoto(playerId: string, formData: FormData) {
   revalidatePath("/partidas/nueva");
 }
 
-export async function updatePlayerName(playerId: string, name: string) {
+export async function updatePlayerName(
+  playerId: string,
+  name: string,
+  password: string
+) {
+  assertAdminPassword(password);
+
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error("El nombre es obligatorio");
@@ -74,7 +85,9 @@ export async function updatePlayerName(playerId: string, name: string) {
   revalidatePath("/tops");
 }
 
-export async function deletePlayer(playerId: string) {
+export async function deletePlayer(playerId: string, password: string) {
+  assertAdminPassword(password);
+
   try {
     await prisma.player.delete({ where: { id: playerId } });
   } catch (err) {
