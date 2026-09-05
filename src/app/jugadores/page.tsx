@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createPlayer } from "@/lib/actions/players";
-import { EditablePlayerAvatar } from "@/components/editable-player-avatar";
+import { PlayerCard } from "@/components/player-card";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,7 @@ export default async function JugadoresPage() {
           </div>
           <button
             type="submit"
-            className="bg-utn-blue text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-utn-blue-dark transition-colors"
+            className="bg-primary text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-primary-dark transition-colors"
           >
             Agregar jugador
           </button>
@@ -53,7 +53,9 @@ export default async function JugadoresPage() {
             Jugadores ({players.length})
           </h2>
           {players.length > 0 && (
-            <p className="text-xs text-muted">Tocá la foto para cambiarla.</p>
+            <p className="text-xs text-muted">
+              Tocá la foto para cambiarla, el nombre para editarlo.
+            </p>
           )}
         </div>
         {players.length === 0 ? (
@@ -63,23 +65,7 @@ export default async function JugadoresPage() {
         ) : (
           <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {players.map((player) => (
-              <li
-                key={player.id}
-                className="bg-card border border-border rounded-lg p-3 flex items-center gap-3"
-              >
-                <EditablePlayerAvatar
-                  playerId={player.id}
-                  name={player.name}
-                  photoUrl={player.photoUrl}
-                  size={44}
-                />
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{player.name}</p>
-                  <p className="text-xs text-muted">
-                    {player.wins} {player.wins === 1 ? "victoria" : "victorias"}
-                  </p>
-                </div>
-              </li>
+              <PlayerCard key={player.id} player={player} />
             ))}
           </ul>
         )}

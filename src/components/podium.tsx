@@ -34,7 +34,7 @@ export function Podium({ players }: { players: TopPlayer[] }) {
               {player.wins} {player.wins === 1 ? "victoria" : "victorias"}
             </p>
             <div
-              className="w-20 sm:w-24 rounded-t-lg bg-gradient-to-t from-utn-blue-dark to-utn-blue"
+              className="w-20 sm:w-24 rounded-t-lg bg-gradient-to-t from-primary-dark to-primary"
               style={{ height: HEIGHTS[i] }}
             />
           </div>

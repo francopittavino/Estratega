@@ -37,7 +37,7 @@ export default async function TopsPage() {
               <p className="flex-1 min-w-0 font-medium truncate">
                 {player.name}
               </p>
-              <p className="text-lg font-bold text-utn-blue tabular-nums">
+              <p className="text-lg font-bold text-primary tabular-nums">
                 {player.wins}
               </p>
             </li>

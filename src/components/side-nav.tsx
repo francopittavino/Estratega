@@ -21,22 +21,16 @@ export function SideNav() {
         type="button"
         aria-label="Abrir menú"
         onClick={() => setOpen(true)}
-        className="flex flex-col justify-center gap-1.5 h-9 w-9 shrink-0"
+        className="fixed top-4 left-4 z-40 flex flex-col justify-center gap-1.5 h-10 w-10 rounded-full bg-card/80 backdrop-blur border border-border shadow-lg"
       >
-        <span className="block h-0.5 w-6 bg-white rounded-full" />
-        <span className="block h-0.5 w-6 bg-white rounded-full" />
-        <span className="block h-0.5 w-6 bg-white rounded-full" />
+        <span className="block h-0.5 w-5 mx-auto bg-foreground rounded-full" />
+        <span className="block h-0.5 w-5 mx-auto bg-foreground rounded-full" />
+        <span className="block h-0.5 w-5 mx-auto bg-foreground rounded-full" />
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex">
-          <button
-            type="button"
-            aria-label="Cerrar menú"
-            onClick={() => setOpen(false)}
-            className="flex-1 bg-black/60"
-          />
-          <nav className="w-64 bg-card border-l border-border p-4 flex flex-col gap-1">
+          <nav className="w-64 bg-card border-r border-border p-4 flex flex-col gap-1">
             <p className="text-xs uppercase tracking-wider text-muted px-2 mb-2">
               Menú
             </p>
@@ -52,7 +46,7 @@ export function SideNav() {
                   onClick={() => setOpen(false)}
                   className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                     active
-                      ? "bg-utn-blue text-white"
+                      ? "bg-primary text-white"
                       : "text-foreground hover:bg-white/5"
                   }`}
                 >
@@ -61,6 +55,12 @@ export function SideNav() {
               );
             })}
           </nav>
+          <button
+            type="button"
+            aria-label="Cerrar menú"
+            onClick={() => setOpen(false)}
+            className="flex-1 bg-black/60"
+          />
         </div>
       )}
     </>

@@ -18,9 +18,9 @@ export default async function Home() {
         <Image
           src="/utn-logo.jpg"
           alt="Logo UTN"
-          width={72}
-          height={72}
-          className="rounded-lg bg-white p-1"
+          width={92}
+          height={92}
+          className="rounded-xl bg-white p-1.5 shadow-lg shadow-black/40"
           priority
         />
         <h1 className="hero-title text-5xl sm:text-6xl">EL ESTRATEGA</h1>
@@ -31,7 +31,7 @@ export default async function Home() {
 
       <Link
         href="/partidas/nueva"
-        className="bg-utn-blue text-white rounded-full px-8 py-3 text-base font-semibold hover:bg-utn-blue-dark transition-colors shadow-lg shadow-utn-blue/30"
+        className="bg-primary text-white rounded-full px-8 py-3 text-base font-semibold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/30"
       >
         Iniciar partida
       </Link>

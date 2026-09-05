@@ -82,7 +82,7 @@ export function GameBoard({
                 type="button"
                 disabled={isPending}
                 onClick={handleGoBack}
-                className="border border-border text-muted rounded-md px-4 py-2 text-sm font-medium hover:border-utn-blue/50 hover:text-foreground transition-colors disabled:opacity-60"
+                className="border border-border text-muted rounded-md px-4 py-2 text-sm font-medium hover:border-primary/50 hover:text-foreground transition-colors disabled:opacity-60"
               >
                 ↩ Volver una ronda
               </button>
@@ -91,7 +91,7 @@ export function GameBoard({
               type="button"
               disabled={isPending}
               onClick={handleCloseRound}
-              className="bg-utn-blue text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-utn-blue-dark transition-colors disabled:opacity-60"
+              className="bg-primary text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-60"
             >
               Terminar ronda
             </button>
@@ -99,7 +99,7 @@ export function GameBoard({
               type="button"
               disabled={isPending}
               onClick={handleFinish}
-              className="border border-utn-blue text-utn-blue rounded-md px-4 py-2 text-sm font-medium hover:bg-utn-blue/10 transition-colors disabled:opacity-60"
+              className="border border-primary text-primary rounded-md px-4 py-2 text-sm font-medium hover:bg-primary/10 transition-colors disabled:opacity-60"
             >
               Finalizar partida
             </button>
@@ -130,7 +130,7 @@ export function GameBoard({
                   )}
                 </p>
               </div>
-              <p className="text-2xl font-bold text-utn-blue tabular-nums">
+              <p className="text-2xl font-bold text-primary tabular-nums">
                 {participant.totalPoints}
               </p>
             </div>
@@ -147,8 +147,8 @@ export function GameBoard({
                       onClick={() => handlePick(participant.id, points)}
                       className={`h-9 min-w-9 px-2 rounded-md text-sm font-semibold border transition-colors disabled:opacity-60 ${
                         active
-                          ? "bg-accent border-accent text-utn-blue-dark"
-                          : "border-border bg-background hover:border-utn-blue/50"
+                          ? "bg-accent border-accent text-primary-dark"
+                          : "border-border bg-background hover:border-primary/50"
                       }`}
                     >
                       +{points}

@@ -19,13 +19,23 @@ cualquier momento y llevar un ranking histórico de victorias.
 - Sin login: la app es de acceso libre (decisión del usuario, ver
   "Decisiones de producto").
 
+## ⚠️ Credenciales reales en el historial del chat
+
+En la tanda 3, el usuario pegó directo en el chat las credenciales reales
+de producción (Postgres de Prisma Data Platform y datos del Blob store).
+Quedaron en el historial de esa conversación. Se guardaron en `.env` local
+(gitignorado, nunca commiteado) y se usaron para migrar y probar contra la
+base real. Si en algún momento hay dudas sobre exposición de ese chat,
+rotar la contraseña de la base (dashboard de Prisma/Vercel) y regenerar el
+token de Blob.
+
 ## Estado actual (última sesión: 2026-09-04)
 
-Primera sesión (dos tandas). Se armó el proyecto completo desde cero (el
+Primera sesión (tres tandas). Se armó el proyecto completo desde cero (el
 repo estaba vacío, sin commits), se implementó el MVP funcional y después,
-en la misma sesión, se hizo un rediseño grande a partir de feedback
-estético del usuario. Todavía no hay ningún commit pusheado (el usuario
-pidió esperar).
+en la misma sesión, se hicieron dos rondas de rediseño a partir de
+feedback estético del usuario. Todavía no hay ningún commit pusheado (el
+usuario pidió esperar en la tanda 2).
 
 **Tanda 1 — MVP funcional:**
 
@@ -79,29 +89,63 @@ producto" más abajo):**
   de Blob en local) — la lógica de ambas se revisó a mano.
 - `npm run build`, `tsc --noEmit` y `eslint` pasan limpios.
 
+**Tanda 3 — segunda ronda de feedback estético + CRUD de jugadores:**
+
+- Se eliminó la barra superior por completo (ya no hay `<header>`/nav de
+  ningún tipo). El menú ahora es un botón hamburguesa flotante fijo arriba
+  a la izquierda (`src/components/side-nav.tsx`), y el panel se desliza
+  desde la **izquierda** (antes salía de la derecha). Se borró
+  `src/components/site-header.tsx` (ya no se usa).
+- Paleta de acento cambiada de azul a **rojo**, manteniendo el modo
+  oscuro: se renombraron los tokens CSS `--utn-blue`/`--utn-blue-dark` a
+  `--primary`/`--primary-dark` (`#e5484d` / `#b3232a`) en `globals.css`, y
+  todas las clases Tailwind `bg-utn-blue`, `text-utn-blue`, etc. a
+  `bg-primary`, `text-primary`, etc. en toda la app (reemplazo global). El
+  degradé del título de la home también pasó a tonos rojo/dorado. El
+  emblema de la UTN en sí sigue siendo el oficial (azul), no se tocó.
+- La home ya no tiene barra encima: el emblema UTN + título quedan como
+  el elemento visual más arriba de la página, actuando como "header".
+- **Editar y eliminar jugadores** (antes solo se podía cambiar la foto):
+  `src/components/player-card.tsx` (nuevo, reemplaza el `<li>` que estaba
+  inline en `/jugadores`) permite tocar el nombre para editarlo inline
+  (Enter guarda, Escape cancela) y tiene un botón de tacho para borrar.
+  Nuevas actions en `players.ts`: `updatePlayerName`, `deletePlayer`
+  (esta última atrapa el error de FK de Prisma —código `P2003`— si el
+  jugador ya participó en alguna partida, y tira un mensaje claro en vez
+  de un 500).
+- El selector de participantes en `/partidas/nueva` ahora tiene mejor
+  contraste de selección (borde más grueso, fondo más opaco, tilde ✓) —
+  en modo oscuro el estado "seleccionado" anterior casi no se notaba.
+- **Probado en vivo contra la base de Postgres real de producción**
+  (Prisma Data Platform, la que pasó el usuario): se corrió
+  `npx prisma migrate deploy` contra ella (aplicó la migración inicial
+  sin problemas) y se probó crear jugador, editar nombre, y eliminar
+  jugador — los tres funcionaron correctamente end-to-end. La base quedó
+  limpia (sin datos de prueba) al terminar. No se pudo probar la subida
+  de fotos porque falta `BLOB_READ_WRITE_TOKEN` (el usuario solo pasó
+  `BLOB_STORE_ID` y `BLOB_WEBHOOK_PUBLIC_KEY`, que son otra cosa).
+
 ### Falta para que funcione en producción
 
-1. **Crear la base de datos Postgres en Vercel** (Storage → Postgres) y
-   conectarla al proyecto `estratega`. Eso genera solas las env vars
-   `DATABASE_URL` / `DATABASE_URL_UNPOOLED`.
-2. **Crear un Blob store en Vercel** (Storage → Blob) y conectarlo al
-   proyecto. Genera sola la env var `BLOB_READ_WRITE_TOKEN`.
-3. Correr `npx prisma migrate deploy` (o `db push` para el primer setup)
-   contra esa base antes del primer uso real, o dejar que el build de
-   Vercel lo haga si se agrega un paso de migración al pipeline (todavía
-   no está configurado — hoy el `build` script solo corre
-   `prisma generate`, no migra).
-4. Conectar el repo de GitHub al proyecto de Vercel si todavía no está
+1. ~~Crear la base de datos Postgres~~ — LISTO: el usuario ya tiene una
+   base de Prisma Data Platform, y esta sesión ya le aplicó la migración
+   inicial (`npx prisma migrate deploy`). Falta cargar
+   `DATABASE_URL`/`DATABASE_URL_UNPOOLED` como env vars en el proyecto de
+   Vercel (hoy solo están en el `.env` local, gitignorado).
+2. **Conseguir `BLOB_READ_WRITE_TOKEN`** (Vercel/dashboard del store de
+   Blob → pestaña de tokens/`.env.local`) y cargarlo como env var, tanto
+   local como en Vercel. Sin esto, subir o cambiar fotos va a fallar.
+3. Conectar el repo de GitHub al proyecto de Vercel si todavía no está
    conectado (deploy automático en cada push a `main`).
-5. Hacer el push del commit (el usuario pidió esperar en la última
-   respuesta de esta sesión — confirmar con él antes de pushear).
-6. Probar en producción el flujo completo, en particular la subida/cambio
-   de fotos y el borrado de partida con contraseña (no se pudieron probar
-   en vivo en esta sesión, ver arriba).
+4. Hacer el push del commit (el usuario pidió esperar — confirmar con él
+   antes de pushear; a esta altura ya son 3 tandas de cambios sin
+   pushear).
+5. Probar en producción el flujo completo, en particular la subida/cambio
+   de fotos (necesita el token de Blob) y el borrado de partida con
+   contraseña (no se probaron en vivo en esta sesión).
 
 ### Pendiente / no pedido todavía (no implementado a propósito)
 
-- Editar jugadores más allá de la foto (nombre, borrar jugador).
 - Autenticación real (el usuario eligió acceso libre sin login; el borrado
   de partidas usa una contraseña compartida hardcodeada, no es auth real).
 - Puntajes negativos o fuera de +0..+5 (el usuario eligió solo botones
@@ -143,6 +187,16 @@ producto" más abajo):**
   ronda abierta a la última cerrada), no un historial completo. Si hay
   puntajes cargados en la ronda abierta al volver atrás, se pierden (se
   avisa con un `confirm` antes de ejecutar).
+- **Estética (feedback 2026-09-04, segunda ronda)**: sin barra superior
+  (menú flotante en vez de nav en una barra), menú lateral desde la
+  izquierda (no la derecha), color de interfaz rojo en vez de azul
+  (manteniendo dark mode; el logo UTN sigue azul, es el emblema oficial),
+  poder editar y borrar jugadores (no solo la foto).
+- **Borrar jugador**: sin contraseña (a diferencia de borrar partida). Si
+  el jugador ya jugó alguna partida, el borrado se bloquea con un mensaje
+  claro en vez de romper el historial de esa partida (por la FK
+  `Restrict` en el schema) — no se pidió explícitamente pero es la
+  consecuencia lógica de no permitir huérfanos en `GameParticipant`.
 
 ## Decisiones técnicas y por qué
 
@@ -171,24 +225,28 @@ producto" más abajo):**
   `finishGame`, etc.) es un server action sin chequeo de usuario. Si en el
   futuro se agrega una clave compartida, hay que agregar el chequeo ahí,
   no en el cliente.
+- **Credenciales reales solo en `.env` local**: cuando el usuario pasa
+  secretos de producción por el chat (pasó en la tanda 3), van directo a
+  `.env` (gitignorado), nunca a `.env.example` ni a ningún archivo
+  commiteado, y no se repiten en texto en las respuestas.
 
 ## Estructura relevante
 
 ```
 prisma/schema.prisma          modelos: Player, Game, GameParticipant, Round, RoundScore
 src/lib/prisma.ts             singleton de PrismaClient
-src/lib/actions/players.ts    createPlayer, updatePlayerPhoto (subida a Blob)
+src/lib/actions/players.ts    createPlayer, updatePlayerPhoto, updatePlayerName, deletePlayer
 src/lib/actions/games.ts      createGame, setRoundScore, closeRound, finishGame,
                                goBackOneRound, deleteGame (contraseña "estratega")
-src/components/site-header.tsx      header fino: logo chico + botón hamburguesa
-src/components/side-nav.tsx         menú lateral desplegable (Inicio/Partidas/Jugadores/Tops)
+src/components/side-nav.tsx         botón hamburguesa flotante + menú desde la izquierda
 src/components/podium.tsx           podio animado del top 3 (home)
 src/components/game-board.tsx       UI del anotador en vivo (client component)
 src/components/new-game-form.tsx    selector de participantes (client component)
 src/components/player-avatar.tsx    avatar con foto o iniciales (solo lectura)
 src/components/editable-player-avatar.tsx  avatar + cambio de foto (click abre file picker)
+src/components/player-card.tsx      tarjeta de jugador: avatar editable + nombre editable + borrar
 src/components/delete-game-button.tsx      botón de tacho con prompt de contraseña
-src/app/page.tsx               home: título animado + "Iniciar partida" + podio
+src/app/page.tsx               home: título animado + "Iniciar partida" + podio (sin barra arriba)
 src/app/jugadores/page.tsx
 src/app/partidas/page.tsx
 src/app/partidas/nueva/page.tsx
@@ -196,6 +254,9 @@ src/app/partidas/[id]/page.tsx
 src/app/tops/page.tsx
 public/utn-logo.jpg           emblema UTN (dominio público, Wikimedia Commons)
 ```
+
+No existe `src/components/site-header.tsx` — se borró en la tanda 3 junto
+con la barra superior. Si algo lo referencia, es código viejo a limpiar.
 
 ## Convención para esta bitácora
 

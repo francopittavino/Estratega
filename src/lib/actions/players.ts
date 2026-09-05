@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export async function createPlayer(formData: FormData) {
@@ -51,5 +52,41 @@ export async function updatePlayerPhoto(playerId: string, formData: FormData) {
 
   revalidatePath("/jugadores");
   revalidatePath("/partidas");
+  revalidatePath("/partidas/nueva");
+}
+
+export async function updatePlayerName(playerId: string, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("El nombre es obligatorio");
+  }
+
+  await prisma.player.update({
+    where: { id: playerId },
+    data: { name: trimmed },
+  });
+
+  revalidatePath("/jugadores");
+  revalidatePath("/partidas");
+  revalidatePath("/partidas/nueva");
+  revalidatePath("/tops");
+}
+
+export async function deletePlayer(playerId: string) {
+  try {
+    await prisma.player.delete({ where: { id: playerId } });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2003"
+    ) {
+      throw new Error(
+        "No se puede eliminar: ya participó en alguna partida. Borrá esas partidas primero."
+      );
+    }
+    throw err;
+  }
+
+  revalidatePath("/jugadores");
   revalidatePath("/partidas/nueva");
 }

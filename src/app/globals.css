@@ -7,8 +7,8 @@
   --card: #131a2c;
   --border: #232d47;
   --muted: #8891ab;
-  --utn-blue: #3b6fe0;
-  --utn-blue-dark: #2451b0;
+  --primary: #e5484d;
+  --primary-dark: #b3232a;
   --accent: #ffb703;
 }
 
@@ -18,8 +18,8 @@
   --color-card: var(--card);
   --color-border: var(--border);
   --color-muted: var(--muted);
-  --color-utn-blue: var(--utn-blue);
-  --color-utn-blue-dark: var(--utn-blue-dark);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
   --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -59,19 +59,19 @@ body {
   line-height: 1;
   background-image: linear-gradient(
     90deg,
-    #3b6fe0,
-    #8fb2ff,
+    #e5484d,
+    #ff9a8b,
     #ffb703,
-    #3b6fe0
+    #e5484d
   );
   background-size: 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   text-shadow:
-    1px 1px 0 #101a33,
-    2px 2px 0 #101a33,
-    3px 3px 0 #101a33,
+    1px 1px 0 #2a0f10,
+    2px 2px 0 #2a0f10,
+    3px 3px 0 #2a0f10,
     4px 4px 10px rgba(0, 0, 0, 0.55);
   animation:
     hero-title-pop 0.7s ease-out both,

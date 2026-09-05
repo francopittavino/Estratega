@@ -44,8 +44,8 @@ export function NewGameForm({ players }: { players: Player[] }) {
                 onClick={() => toggle(player.id)}
                 className={`w-full flex items-center gap-2 rounded-lg border-2 p-2 text-left transition-colors ${
                   active
-                    ? "border-utn-blue bg-utn-blue/25"
-                    : "border-border bg-card hover:border-utn-blue/50"
+                    ? "border-primary bg-primary/25"
+                    : "border-border bg-card hover:border-primary/50"
                 }`}
               >
                 <PlayerAvatar
@@ -57,7 +57,7 @@ export function NewGameForm({ players }: { players: Player[] }) {
                   {player.name}
                 </span>
                 {active && (
-                  <span className="text-utn-blue text-base leading-none">✓</span>
+                  <span className="text-primary text-base leading-none">✓</span>
                 )}
               </button>
             </li>
@@ -71,7 +71,7 @@ export function NewGameForm({ players }: { players: Player[] }) {
         type="button"
         disabled={isPending}
         onClick={handleSubmit}
-        className="self-start bg-utn-blue text-white rounded-md px-5 py-2 text-sm font-medium hover:bg-utn-blue-dark transition-colors disabled:opacity-60"
+        className="self-start bg-primary text-white rounded-md px-5 py-2 text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-60"
       >
         {isPending ? "Creando..." : `Arrancar partida (${selected.length})`}
       </button>

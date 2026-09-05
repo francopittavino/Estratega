@@ -18,7 +18,7 @@ export default async function NuevaPartidaPage() {
         </p>
         <Link
           href="/jugadores"
-          className="self-start bg-utn-blue text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-utn-blue-dark transition-colors"
+          className="self-start bg-primary text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-primary-dark transition-colors"
         >
           Cargar jugadores
         </Link>

@@ -31,7 +31,7 @@ export function PlayerAvatar({
 
   return (
     <div
-      className="rounded-full bg-utn-blue text-white flex items-center justify-center font-semibold shrink-0"
+      className="rounded-full bg-primary text-white flex items-center justify-center font-semibold shrink-0"
       style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
       {initials || "?"}
