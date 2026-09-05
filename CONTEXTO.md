@@ -33,7 +33,7 @@ token de Blob.
 
 ## Estado actual (última sesión: 2026-09-04/05, misma conversación)
 
-Primera sesión (ocho tandas). Se armó el proyecto completo desde cero (el
+Primera sesión (nueve tandas). Se armó el proyecto completo desde cero (el
 repo estaba vacío, sin commits), se implementó el MVP funcional, se
 hicieron cuatro rondas de ajustes visuales a partir de feedback del
 usuario, en la tanda 6 se pusheó todo y se dejó andando en producción en
@@ -324,6 +324,16 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
   explicación es la más consistente con "primero y segundo" en vez de
   "empate", pero no es 100% segura sin ver el caso real.
 
+**Tanda 9 — ajuste de los botones de puntaje rápido:**
+
+- El usuario pidió sacar el botón +1 (nunca lo usan) y agregar +6 y +7.
+  Se creó `src/lib/quick-points.ts` con `QUICK_POINTS = [0,2,3,4,5,6,7]`
+  como fuente única, importada tanto por `game-board.tsx` (los botones)
+  como por `setRoundScore` en `games.ts` (que antes validaba con un
+  rango `0..5` a mano; ahora valida contra la lista exacta, así que un
+  +1 tampoco se puede forzar salteando el botón). Probado en local: los
+  botones muestran el set correcto y sumar +6/+7 da el total esperado.
+
 ### Falta para que funcione en producción
 
 Nada bloqueante. La app funciona de punta a punta en producción (ver
@@ -355,8 +365,11 @@ tanda 6). Lo que queda es menor/opcional:
 ## Decisiones de producto (respuestas del usuario, 2026-09-04)
 
 - **Acceso**: libre, sin login. Cualquiera con el link puede anotar.
-- **Puntajes por ronda**: solo botones rápidos +0 a +5, sin carga manual ni
-  negativos.
+- **Puntajes por ronda**: solo botones rápidos, sin carga manual ni
+  negativos. Originalmente +0 a +5; en la tanda 9 el usuario pidió sacar
+  el +1 (nunca se usa) y agregar +6 y +7, así que ahora son
+  `[0, 2, 3, 4, 5, 6, 7]` — ver `src/lib/quick-points.ts` (fuente única,
+  usada tanto por el botón como por la validación del server action).
 - **Corrección dentro de una ronda**: si tocás otro botón para el mismo
   jugador antes de "Terminar ronda", se reemplaza el valor cargado
   (implementado con upsert sobre `RoundScore`).

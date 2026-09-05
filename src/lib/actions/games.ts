@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { assertAdminPassword } from "@/lib/admin-password";
+import { QUICK_POINTS } from "@/lib/quick-points";
 
 export async function createGame(playerIds: string[]) {
   const uniqueIds = Array.from(new Set(playerIds)).filter(Boolean);
@@ -34,8 +35,8 @@ export async function setRoundScore(
   participantId: string,
   points: number
 ) {
-  if (!Number.isInteger(points) || points < 0 || points > 5) {
-    throw new Error("El puntaje rápido va de +0 a +5");
+  if (!(QUICK_POINTS as readonly number[]).includes(points)) {
+    throw new Error("Puntaje rápido inválido");
   }
 
   const round = await prisma.round.findUnique({ where: { id: roundId } });

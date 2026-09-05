@@ -8,8 +8,7 @@ import {
   goBackOneRound,
   setRoundScore,
 } from "@/lib/actions/games";
-
-const QUICK_POINTS = [0, 1, 2, 3, 4, 5];
+import { QUICK_POINTS } from "@/lib/quick-points";
 
 type Participant = {
   id: string;
