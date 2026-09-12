@@ -1,50 +1,39 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useRef } from "react";
 import { PlayerAvatar } from "@/components/player-avatar";
-import { updatePlayerPhoto } from "@/lib/actions/players";
 
+// Solo abre el selector de archivo y avisa qué foto se eligió. La subida (y
+// la contraseña que pide) las maneja PlayerCard, que es quien tiene lugar
+// para mostrar el campo sin meter un formulario adentro de un <button>.
 export function EditablePlayerAvatar({
-  playerId,
   name,
   photoUrl,
   size = 44,
+  disabled = false,
+  onSelect,
 }: {
-  playerId: string;
   name: string;
   photoUrl: string | null;
   size?: number;
+  disabled?: boolean;
+  onSelect: (file: File) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isPending, startTransition] = useTransition();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const password = window.prompt("Contraseña para cambiar la foto:");
-    if (password === null) {
-      if (inputRef.current) inputRef.current.value = "";
-      return;
-    }
-    const formData = new FormData();
-    formData.set("photo", file);
-    formData.set("password", password);
-    startTransition(async () => {
-      try {
-        await updatePlayerPhoto(playerId, formData);
-      } catch (err) {
-        alert(err instanceof Error ? err.message : "No se pudo cambiar la foto");
-      } finally {
-        if (inputRef.current) inputRef.current.value = "";
-      }
-    });
+    // El input se limpia siempre: si no, volver a elegir la misma foto no
+    // dispara el change y parece que no funciona.
+    if (inputRef.current) inputRef.current.value = "";
+    if (file) onSelect(file);
   }
 
   return (
     <button
       type="button"
       onClick={() => inputRef.current?.click()}
-      disabled={isPending}
+      disabled={disabled}
       title="Cambiar foto"
       className="relative shrink-0 rounded-full disabled:opacity-60"
       style={{ width: size, height: size }}

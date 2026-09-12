@@ -39,7 +39,9 @@ y el **anotador de truco** completo, con su propia sección, su marcador de
 cigarrillos y tres rankings por equipo (tandas 10 y 11). Después del push,
 dos agregados más: el marcador **se actualiza solo** para los que miran, y
 al crear una partida se puede elegir una **contraseña propia** para
-recuperar el control (tanda 12). Todo deployado a producción.
+recuperar el control (tanda 12). Por último, se sacaron los `window.prompt`
+que quedaban en la edición de jugadores (tanda 13). Todo deployado a
+producción.
 
 **Primera sesión (2026-09-04/05, nueve tandas)**: se armó el proyecto
 completo desde cero (el repo estaba vacío, sin commits), se implementó el
@@ -488,18 +490,45 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
   equivocada no, la de OTRA partida no, y la maestra entra siempre (también
   en partidas creadas sin contraseña). Datos de prueba borrados al terminar.
 
+**Tanda 13 — se fueron los últimos `window.prompt`:**
+
+- Los tres flujos de edición de jugador (renombrar, borrar y cambiar foto)
+  pedían la contraseña con `window.prompt` y mostraban los errores con
+  `alert`. Ahora la tarjeta del jugador (`player-card.tsx`) abre **un solo
+  campo de contraseña abajo**, con el título según lo que estés por hacer
+  ("Contraseña para renombrar a X", "...para eliminar a X", "...para
+  cambiarle la foto a X"). Ya no queda ningún `window.prompt` ni `alert` en
+  la app.
+- Para eso, `editable-player-avatar.tsx` dejó de subir la foto: ahora solo
+  abre el selector de archivo y avisa cuál se eligió (`onSelect`). La
+  subida y la contraseña las maneja `PlayerCard`, que es quien tiene lugar
+  para mostrar el campo — un formulario no puede ir adentro de un
+  `<button>`, que es lo que es el avatar.
+- **Bug encontrado probando**: al confirmar el nombre nuevo con Enter, ese
+  mismo Enter llegaba al campo de contraseña recién montado (tiene
+  `autoFocus`) y disparaba un submit vacío, que mostraba "Contraseña
+  incorrecta" antes de que llegues a escribir nada. Se arregló ignorando
+  los submits con la contraseña vacía (y el botón "Confirmar" queda
+  deshabilitado hasta que escribas algo).
+- Probado end-to-end con un jugador de prueba: renombrar (con contraseña
+  mala primero y después la buena), cambiar la foto, y borrar. También se
+  verificó que borrar un jugador que ya jugó partidas sigue mostrando el
+  mensaje de FK dentro de la tarjeta sin romper el layout. El jugador de
+  prueba y la foto que había subido al Blob se borraron al terminar.
+- Quedan dos `confirm()` nativos en `game-board.tsx` ("¿Finalizar la
+  partida?" y "¿Volver una ronda atrás?"). No se tocaron porque el pedido
+  era por los prompts de contraseña, pero si alguna vez hay que probarlos
+  con el navegador automatizado, hay que pasarlos a un cartel propio como
+  el `FinishDialog` del truco.
+
 ### Falta para que funcione en producción
 
 Nada bloqueante. Lo que queda es menor/opcional:
 
 1. ~~Borrar los jugadores de prueba `TestProd3`/`TestProd4`~~ — hecho por
    el usuario, la base ya no los tiene.
-2. Probar en producción, a mano, lo que sigue usando `window.prompt` y no
-   se puede automatizar: renombrar/borrar jugador con contraseña y cambiar
-   la foto de un jugador ya creado con contraseña (`player-card.tsx` y
-   `editable-player-avatar.tsx`). Si molesta, se pueden pasar al mismo
-   patrón de campo inline que ya usan borrar partida y "tomar el control".
-   (Borrar partida con contraseña **ya quedó verificado**, ver tanda 11b.)
+2. ~~Probar a mano renombrar/borrar jugador y cambiar foto~~ — hecho: ya no
+   usan `window.prompt`, se probaron los tres end-to-end (tanda 13).
 3. Si se quiere un dominio propio en vez de `estratega-taupe.vercel.app`,
    configurarlo en Vercel (Settings → Domains). No es necesario para que
    funcione, es solo estético.
@@ -675,9 +704,9 @@ Nada bloqueante. Lo que queda es menor/opcional:
 - **Nada de `window.prompt` ni `confirm()` en código nuevo**: congelan la
   pestaña entera y hacen imposible probar el flujo con el navegador
   automatizado (pasó en la tanda 7 y de nuevo esta sesión). Los diálogos
-  nuevos son componentes de la propia página. Queda `confirm()` viejo en
-  `game-board.tsx` y `window.prompt` en `player-card.tsx` /
-  `editable-player-avatar.tsx`.
+  son componentes de la propia página. Desde la tanda 13 no queda ningún
+  `window.prompt` ni `alert`; los únicos nativos que sobreviven son los dos
+  `confirm()` de `game-board.tsx`.
 - **`autoComplete="new-password"` en todo campo de contraseña**: Chrome
   ignora `autoComplete="off"` en inputs de tipo password y autocompleta
   claves guardadas de otros sitios, concatenándolas con lo que tipeás.
@@ -723,6 +752,8 @@ src/components/player-avatar.tsx    avatar con foto o iniciales (solo lectura)
 src/components/editable-player-avatar.tsx  avatar + cambio de foto (click abre file picker)
 src/components/player-card.tsx      tarjeta de jugador: avatar editable + nombre editable + borrar
 src/components/delete-game-button.tsx   tacho + campo de contraseña inline (kind: estratega|truco)
+src/components/player-card.tsx      (ver arriba) también trae el campo de contraseña
+                                     de renombrar / borrar / cambiar foto
 src/app/page.tsx               home: título + "Iniciar partida" + link a truco + podio
 src/app/layout.tsx             fondo fijo de imagen + overlay oscuro (bg-background/65)
 src/app/jugadores/page.tsx
