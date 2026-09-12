@@ -40,8 +40,9 @@ cigarrillos y tres rankings por equipo (tandas 10 y 11). Después del push,
 dos agregados más: el marcador **se actualiza solo** para los que miran, y
 al crear una partida se puede elegir una **contraseña propia** para
 recuperar el control (tanda 12). Por último, se sacaron los `window.prompt`
-que quedaban en la edición de jugadores (tanda 13). Todo deployado a
-producción.
+que quedaban en la edición de jugadores (tanda 13) y se rehízo el dibujo de
+los cigarrillos para que no se superpongan y se note la brasa (tanda 14).
+Todo deployado a producción.
 
 **Primera sesión (2026-09-04/05, nueve tandas)**: se armó el proyecto
 completo desde cero (el repo estaba vacío, sin commits), se implementó el
@@ -520,6 +521,34 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
   era por los prompts de contraseña, pero si alguna vez hay que probarlos
   con el navegador automatizado, hay que pasarlos a un cartel propio como
   el `FinishDialog` del truco.
+
+**Tanda 14 — los cigarrillos del truco, sin superponerse y bien encendidos:**
+
+- El usuario reportó dos cosas del marcador: los cigarrillos se montaban unos
+  sobre otros en las esquinas, y no se notaba que estuvieran prendidos.
+- **Superposición**: antes los cuatro lados iban de esquina a esquina, así
+  que en cada esquina se cruzaban dos. Ahora cada lado queda **cortado antes
+  de la esquina**, y los huecos de las esquinas de abajo-izquierda y
+  arriba-derecha son justo por donde pasa el cigarrillo cruzado. Resultado:
+  ningún cigarrillo toca a otro, con ~2 unidades de luz entre los más
+  cercanos. Si se tocan los largos o los huecos, hay que rehacer esa cuenta:
+  el cruzado va sobre la recta `x + y = 100`, y la distancia de la punta de
+  cada lado a esa recta tiene que ser mayor que el grosor de dos cigarrillos.
+- **Que se note el fuego**: antes el filtro era naranja fuerte y la brasa un
+  puntito, así que el ojo leía el filtro como "la parte de color" y la brasa
+  se perdía. Ahora el corcho es marrón apagado y la punta encendida se dibuja
+  en cuatro bandas (ceniza gris oscuro, rojo apagado, naranja y amarillo casi
+  blanco contra el papel), más una banda de papel chamuscado y un resplandor
+  con dos `drop-shadow`. El amarillo va del lado del papel porque la parte
+  más caliente es la que está quemando, no la punta.
+- El resplandor va como `filter` de CSS y no como `<filter>` de SVG para no
+  tener que darle un id único a cada cuadradito (habría 60 en pantalla). Por
+  eso el `<svg>` lleva `overflow-visible`: si no, el halo se corta en el
+  borde del viewBox.
+- Probado con una página temporal (`/preview-cigarrillos`, **borrada antes de
+  commitear**) que renderiza los cuadraditos de 1 a 5, una simulación de la
+  columna de 180px del anotador en un celular, y uno de 560px para mirar el
+  detalle. No se tocó la base para probar esto.
 
 ### Falta para que funcione en producción
 
