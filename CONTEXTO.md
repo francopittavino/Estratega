@@ -36,8 +36,10 @@ token de Blob.
 **Segunda sesión (2026-09-11)**: dos funciones nuevas grandes — "solo el
 que inició la partida puede anotar" (sin login, con cookie de dispositivo)
 y el **anotador de truco** completo, con su propia sección, su marcador de
-cigarrillos y tres rankings por equipo. Ver "Tanda 10" y "Tanda 11" más
-abajo.
+cigarrillos y tres rankings por equipo (tandas 10 y 11). Después del push,
+dos agregados más: el marcador **se actualiza solo** para los que miran, y
+al crear una partida se puede elegir una **contraseña propia** para
+recuperar el control (tanda 12). Todo deployado a producción.
 
 **Primera sesión (2026-09-04/05, nueve tandas)**: se armó el proyecto
 completo desde cero (el repo estaba vacío, sin commits), se implementó el
@@ -441,6 +443,51 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
 - El cartel de "¿finalizar?" del truco es propio y no `confirm()` nativo,
   por lo mismo: se ve mejor en el celular y no bloquea la pestaña.
 
+**Tanda 12 — marcador en vivo para el espectador y contraseña por partida:**
+
+- **El marcador se actualiza solo.** `src/components/live-refresh.tsx` monta
+  un `LiveRefresh` en las páginas de partida, solo para el que **no** puede
+  anotar y mientras la partida esté en curso: cada 4 segundos llama a
+  `router.refresh()`, que vuelve a pedirle la página al server (todas son
+  `force-dynamic`, así que trae los puntos frescos). Se pausa con la pestaña
+  en segundo plano (`document.visibilityState`) y se actualiza de una al
+  volver.
+- **No se usó SSE ni websockets a propósito**: en Vercel cada request cae en
+  una instancia distinta, así que una conexión abierta tampoco se enteraría
+  de un cambio hecho en otra instancia sin ir igual a la base. Para un
+  anotador que miran tres o cuatro personas, preguntar cada pocos segundos
+  es más simple y se comporta igual.
+- **Tampoco notificaciones push**: el usuario eligió que alcance con que se
+  actualice con la página abierta. Push de verdad necesitaría service
+  worker, claves VAPID y permiso de cada uno (y en iPhone solo anda si
+  agregan la app a la pantalla de inicio).
+- Se agregó un cartelito **"En vivo"** con un puntito que late, para que el
+  espectador no se quede con la duda de si tiene que refrescar a mano, y el
+  puntaje **destella cuando cambia**. El destello se dispara poniendo
+  `key={puntaje}` en el `<span>`: al cambiar el valor React lo remonta y se
+  reinicia la animación CSS, sin estado ni efectos (que además chocaban con
+  la regla de ESLint `react-hooks/set-state-in-effect`).
+- **Contraseña propia de cada partida** (`src/lib/game-password.ts`): al
+  crear una partida (de El Estratega o de truco) hay un campo opcional. Si
+  ponés una, esa contraseña es la que recupera el control de esa partida
+  desde "Tomar el control". Se guarda hasheada con **scrypt y salt por
+  partida**, nunca en texto plano, porque es una contraseña que elige el
+  usuario y bien puede repetir una que use en otro lado.
+- La **contraseña maestra `"estratega"` sigue funcionando siempre**, aunque
+  la partida tenga la suya: así el dueño de la app puede destrabar
+  cualquier partida sin saber la que puso el otro. Si la partida se creó sin
+  contraseña, la maestra es la única que sirve.
+- Ojo: la contraseña de la partida **solo sirve para recuperar el control**,
+  no para borrar la partida. Borrar sigue pidiendo la maestra.
+- Migración `20260911120000_contrasena_por_partida`: dos columnas nullable
+  (`ownerPasswordHash` en `Game` y en `TrucoGame`), ya aplicada a la base de
+  producción.
+- Probado en vivo: con la página abierta y sin navegar, cambiando el puntaje
+  por fuera, el marcador del espectador pasó solo de 7-3 a 18-11. Y las
+  cuatro combinaciones de contraseña: la propia de la partida entra, una
+  equivocada no, la de OTRA partida no, y la maestra entra siempre (también
+  en partidas creadas sin contraseña). Datos de prueba borrados al terminar.
+
 ### Falta para que funcione en producción
 
 Nada bloqueante. Lo que queda es menor/opcional:
@@ -557,6 +604,13 @@ Nada bloqueante. Lo que queda es menor/opcional:
 - **Los equipos no llevan nombre**: se identifican por las fotos y los
   nombres de los jugadores, así el alta tiene menos pasos.
 - **Los cigarrillos van encendidos, con brasa.**
+- **Al espectador se le actualiza el marcador solo** con la página abierta,
+  sin notificaciones push. El usuario eligió explícitamente esta opción por
+  sobre mandar notificaciones al celular con la app cerrada.
+- **La contraseña que se elige al crear la partida es opcional**, y la
+  maestra `"estratega"` sirve siempre igual. Así el usuario puede destrabar
+  cualquier partida aunque no sepa la que puso el otro, y el que arma una
+  partida rápida no está obligado a inventar una clave.
 
 ## Decisiones técnicas y por qué
 
@@ -596,6 +650,19 @@ Nada bloqueante. Lo que queda es menor/opcional:
 - **La cookie de dueño se guarda hasheada** (`SHA-256`) en la base, nunca
   en crudo, y la cookie es `httpOnly` para que no se pueda leer ni
   falsificar desde JS.
+- **Las contraseñas por partida se hashean con scrypt y salt propio**
+  (`src/lib/game-password.ts`), a diferencia de la maestra, que es una
+  constante en el código. Son contraseñas que elige el usuario y bien puede
+  repetir alguna que use en otro lado: no tienen que quedar legibles en la
+  base.
+- **El refresco del espectador es polling, no SSE ni websockets**: en Vercel
+  cada request cae en una instancia distinta, así que una conexión abierta
+  igual tendría que ir a la base para enterarse de un cambio hecho en otra
+  instancia. Ver tanda 12.
+- **Para animar algo cuando cambia un valor, se usa `key={valor}`** en el
+  elemento más una animación CSS: React lo remonta y la animación se
+  reinicia sola. Evita el `useEffect` + `setState` que ESLint rechaza con
+  `react-hooks/set-state-in-effect`.
 - **Los topes de puntaje del truco viven en el `where` del `updateMany`**,
   no en un read-modify-write: `pointsA: { lt: 30 }` para sumar y
   `{ gt: 0 }` para restar. Así el incremento es atómico y toques rápidos
@@ -630,6 +697,7 @@ prisma/schema.prisma          Player, Game, GameParticipant, Round, RoundScore,
 src/lib/prisma.ts             singleton de PrismaClient
 src/lib/admin-password.ts     ADMIN_PASSWORD ("estratega") + assertAdminPassword()
 src/lib/owner.ts              cookie de dispositivo + isOwner/assertOwner (dueño de partida)
+src/lib/game-password.ts      contraseña propia de cada partida (scrypt) + assertCanClaim
 src/lib/quick-points.ts       QUICK_POINTS de El Estratega [0,2,3,4,5,6,7]
 src/lib/truco.ts              reglas del truco: TRUCO_TARGET=30, malas/buenas, modalidades
 src/lib/is-redirect-error.ts  para no tragarse el redirect() en un try/catch
@@ -649,6 +717,8 @@ src/components/cigarette-tally.tsx  los cuadraditos de cigarrillos en SVG
 src/components/new-game-form.tsx    selector de participantes de El Estratega
 src/components/new-truco-game-form.tsx  modalidad + armado de los dos equipos
 src/components/claim-control.tsx    cartel "Estás mirando" + "Tomar el control"
+src/components/live-refresh.tsx     refresca el marcador del espectador + cartelito "En vivo"
+src/components/owner-password-field.tsx  campo de contraseña al crear una partida
 src/components/player-avatar.tsx    avatar con foto o iniciales (solo lectura)
 src/components/editable-player-avatar.tsx  avatar + cambio de foto (click abre file picker)
 src/components/player-card.tsx      tarjeta de jugador: avatar editable + nombre editable + borrar

@@ -27,14 +27,18 @@ enum GameStatus {
 }
 
 model Game {
-  id         String     @id @default(cuid())
-  status     GameStatus @default(IN_PROGRESS)
-  createdAt  DateTime   @default(now())
-  finishedAt DateTime?
+  id                String     @id @default(cuid())
+  status            GameStatus @default(IN_PROGRESS)
+  createdAt         DateTime   @default(now())
+  finishedAt        DateTime?
   // Hash del identificador del dispositivo que creo la partida: solo ese
   // puede anotar puntos. Null = partida vieja (anterior a esta funcion),
   // que queda abierta para cualquiera. Ver src/lib/owner.ts.
-  ownerKey   String?
+  ownerKey          String?
+  // Contrasena elegida al crear la partida, hasheada (scrypt). Es la que
+  // usa el dueno para recuperar el control si pierde la cookie. Null = no
+  // puso ninguna; en ese caso solo sirve la contrasena maestra.
+  ownerPasswordHash String?
 
   participants GameParticipant[]
   rounds       Round[]
@@ -88,18 +92,22 @@ enum TrucoTeam {
 }
 
 model TrucoGame {
-  id         String     @id @default(cuid())
+  id                String     @id @default(cuid())
   // 1 = solitario (1 vs 1), 2 = dúo (2 vs 2), 3 = trío (3 vs 3).
-  teamSize   Int
-  status     GameStatus @default(IN_PROGRESS)
-  pointsA    Int        @default(0)
-  pointsB    Int        @default(0)
-  winnerTeam TrucoTeam?
+  teamSize          Int
+  status            GameStatus @default(IN_PROGRESS)
+  pointsA           Int        @default(0)
+  pointsB           Int        @default(0)
+  winnerTeam        TrucoTeam?
   // Hash del identificador del dispositivo que creó la partida: solo ese
   // puede sumar o restar puntos. Ver src/lib/owner.ts.
-  ownerKey   String?
-  createdAt  DateTime   @default(now())
-  finishedAt DateTime?
+  ownerKey          String?
+  // Contrasena elegida al crear la partida, hasheada (scrypt). Es la que
+  // usa el dueno para recuperar el control si pierde la cookie. Null = no
+  // puso ninguna; en ese caso solo sirve la contrasena maestra.
+  ownerPasswordHash String?
+  createdAt         DateTime   @default(now())
+  finishedAt        DateTime?
 
   members TrucoMember[]
 }

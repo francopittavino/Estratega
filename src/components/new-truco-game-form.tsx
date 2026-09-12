@@ -5,6 +5,7 @@ import { PlayerAvatar } from "@/components/player-avatar";
 import { createTrucoGame } from "@/lib/actions/truco";
 import { TEAM_SIZES, TEAM_SIZE_NAME, TEAM_SIZE_SHORT } from "@/lib/truco";
 import { isRedirectError } from "@/lib/is-redirect-error";
+import { OwnerPasswordField } from "@/components/owner-password-field";
 
 type Player = { id: string; name: string; photoUrl: string | null };
 type Team = "A" | "B";
@@ -13,6 +14,7 @@ export function NewTrucoGameForm({ players }: { players: Player[] }) {
   const [teamSize, setTeamSize] = useState<number>(2);
   const [teams, setTeams] = useState<Record<Team, string[]>>({ A: [], B: [] });
   const [active, setActive] = useState<Team>("A");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -62,7 +64,7 @@ export function NewTrucoGameForm({ players }: { players: Player[] }) {
     }
     startTransition(async () => {
       try {
-        await createTrucoGame(teamSize, teams.A, teams.B);
+        await createTrucoGame(teamSize, teams.A, teams.B, password);
       } catch (err) {
         if (isRedirectError(err)) throw err;
         setError(err instanceof Error ? err.message : "Ocurrió un error");
@@ -191,6 +193,8 @@ export function NewTrucoGameForm({ players }: { players: Player[] }) {
           </p>
         )}
       </section>
+
+      <OwnerPasswordField value={password} onChange={setPassword} />
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 

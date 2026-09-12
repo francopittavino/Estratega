@@ -6,6 +6,7 @@ import type { TrucoTeam } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertAdminPassword } from "@/lib/admin-password";
 import { assertOwner, ensureDeviceKey } from "@/lib/owner";
+import { assertCanClaim, normalizeNewPassword } from "@/lib/game-password";
 import { isTeamSize, TRUCO_TARGET } from "@/lib/truco";
 
 async function assertCanScore(gameId: string) {
@@ -20,7 +21,8 @@ async function assertCanScore(gameId: string) {
 export async function createTrucoGame(
   teamSize: number,
   teamA: string[],
-  teamB: string[]
+  teamB: string[],
+  password?: string
 ) {
   if (!isTeamSize(teamSize)) {
     throw new Error("Modalidad inválida");
@@ -45,6 +47,7 @@ export async function createTrucoGame(
     data: {
       teamSize,
       ownerKey,
+      ownerPasswordHash: normalizeNewPassword(password),
       members: {
         create: [
           ...teamA.map((playerId) => ({ playerId, team: "A" as const })),
@@ -140,14 +143,20 @@ export async function finishTrucoGame(gameId: string) {
 
 // Reasigna el dueño de la partida al dispositivo actual (ver owner.ts).
 export async function claimTrucoGame(gameId: string, password: string) {
-  assertAdminPassword(password);
+  const game = await prisma.trucoGame.findUnique({
+    where: { id: gameId },
+    select: { ownerPasswordHash: true },
+  });
+  if (!game) throw new Error("Partida inexistente");
+
+  // Sirve la contraseña que se eligió al crear esta partida o la maestra.
+  assertCanClaim(password, game.ownerPasswordHash);
 
   const ownerKey = await ensureDeviceKey();
-  const claimed = await prisma.trucoGame.updateMany({
+  await prisma.trucoGame.update({
     where: { id: gameId },
     data: { ownerKey },
   });
-  if (claimed.count === 0) throw new Error("Partida inexistente");
 
   revalidatePath(`/truco/${gameId}`);
 }

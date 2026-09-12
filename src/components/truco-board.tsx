@@ -240,7 +240,11 @@ function TeamColumn({
           {members.map((m) => m.name).join(" · ")}
         </p>
         <p className="text-3xl sm:text-4xl font-bold text-primary tabular-nums leading-none">
-          {points}
+          {/* key = puntaje: al cambiar, React remonta el span y se vuelve a
+              disparar el destello, sin necesidad de estado ni efectos. */}
+          <span key={points} className="score-pop">
+            {points}
+          </span>
           {showTrophy && isWinner && <span className="text-2xl"> 🏆</span>}
         </p>
       </div>

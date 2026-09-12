@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { GameBoard } from "@/components/game-board";
 import { ClaimControl } from "@/components/claim-control";
+import { LiveRefresh } from "@/components/live-refresh";
 import { isOwner, readDeviceKey } from "@/lib/owner";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,9 @@ export default async function PartidaPage({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Los que solo miran no tienen forma de enterarse de un cambio hecho
+          en otro celular: se les refresca el marcador solo. */}
+      <LiveRefresh enabled={!canScore && game.status === "IN_PROGRESS"} />
       {!canScore && game.status === "IN_PROGRESS" && (
         <ClaimControl gameId={game.id} kind="estratega" />
       )}

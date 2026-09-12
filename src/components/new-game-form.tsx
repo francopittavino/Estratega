@@ -4,11 +4,13 @@ import { useState, useTransition } from "react";
 import { createGame } from "@/lib/actions/games";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { isRedirectError } from "@/lib/is-redirect-error";
+import { OwnerPasswordField } from "@/components/owner-password-field";
 
 type Player = { id: string; name: string; photoUrl: string | null };
 
 export function NewGameForm({ players }: { players: Player[] }) {
   const [selected, setSelected] = useState<string[]>([]);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -26,7 +28,7 @@ export function NewGameForm({ players }: { players: Player[] }) {
     }
     startTransition(async () => {
       try {
-        await createGame(selected);
+        await createGame(selected, password);
       } catch (err) {
         if (isRedirectError(err)) throw err;
         setError(err instanceof Error ? err.message : "Ocurrió un error");
@@ -66,6 +68,8 @@ export function NewGameForm({ players }: { players: Player[] }) {
           );
         })}
       </ul>
+
+      <OwnerPasswordField value={password} onChange={setPassword} />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

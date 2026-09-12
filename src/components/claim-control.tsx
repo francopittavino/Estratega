@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { claimGame } from "@/lib/actions/games";
 import { claimTrucoGame } from "@/lib/actions/truco";
+import { LiveBadge } from "@/components/live-refresh";
 
 // Cartel que ven los espectadores: el marcador es de solo lectura, pero si
 // alguien sabe la contraseña puede tomar el control (por si el que arrancó
@@ -39,9 +40,13 @@ export function ClaimControl({
 
   return (
     <div className="bg-card border border-border rounded-lg p-3 flex flex-col gap-2">
-      <p className="text-sm text-muted">
-        👀 Estás mirando. Solo el que inició la partida puede anotar.
-      </p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <LiveBadge />
+        <p className="text-sm text-muted">
+          Estás mirando: solo el que inició la partida puede anotar. El
+          marcador se actualiza solo.
+        </p>
+      </div>
 
       {open ? (
         <form onSubmit={handleSubmit} className="flex flex-col gap-2">
@@ -51,9 +56,12 @@ export function ClaimControl({
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Contraseña"
+            placeholder="Contraseña de la partida"
             className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           />
+          <p className="text-xs text-muted">
+            La que puso el que creó la partida (o la contraseña maestra).
+          </p>
           {error && <p className="text-sm text-red-400">{error}</p>}
           <div className="flex gap-2">
             <button

@@ -135,7 +135,11 @@ export function GameBoard({
                 </p>
               </div>
               <p className="text-2xl font-bold text-primary tabular-nums">
-                {participant.totalPoints}
+                {/* key = puntaje: al cambiar, React remonta el span y se
+                    vuelve a disparar el destello. */}
+                <span key={participant.totalPoints} className="score-pop">
+                  {participant.totalPoints}
+                </span>
               </p>
             </div>
 
