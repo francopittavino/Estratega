@@ -107,9 +107,51 @@ body {
   animation: score-pop 0.45s ease-out;
 }
 
+/* Brasa del cigarrillo: late despacio para que se note que esta prendida.
+   Solo se anima la opacidad del resplandor (no el tamano ni el filtro):
+   hay hasta 60 brasas en pantalla y animar el blur seria caro en un celular. */
+@keyframes cig-ember {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 0.95;
+  }
+}
+
+.cig-ember-glow {
+  opacity: 0.6;
+  animation: cig-ember 1.7s ease-in-out infinite alternate;
+}
+
+/* La bocanada de humo al poner un cigarrillo. Corre una sola vez al montarse
+   el elemento, asi que solo humea el que acabas de sumar. */
+@keyframes cig-smoke {
+  0% {
+    opacity: 0;
+    transform: translate(0, 3px) scale(0.5);
+  }
+  22% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-5px, -20px) scale(1.3);
+  }
+}
+
+.cig-smoke {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: cig-smoke 3s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .live-dot,
-  .score-pop {
+  .score-pop,
+  .cig-ember-glow,
+  .cig-smoke {
     animation: none;
   }
 }

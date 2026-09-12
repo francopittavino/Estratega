@@ -41,8 +41,9 @@ dos agregados más: el marcador **se actualiza solo** para los que miran, y
 al crear una partida se puede elegir una **contraseña propia** para
 recuperar el control (tanda 12). Por último, se sacaron los `window.prompt`
 que quedaban en la edición de jugadores (tanda 13) y se rehízo el dibujo de
-los cigarrillos para que no se superpongan y se note la brasa (tanda 14).
-Todo deployado a producción.
+los cigarrillos para que no se superpongan y se note la brasa (tandas 14
+y 15: todos del mismo largo, blanco y naranja, la brasa latiendo y una
+bocanada de humo al poner cada uno). Todo deployado a producción.
 
 **Primera sesión (2026-09-04/05, nueve tandas)**: se armó el proyecto
 completo desde cero (el repo estaba vacío, sin commits), se implementó el
@@ -549,6 +550,39 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
   commitear**) que renderiza los cuadraditos de 1 a 5, una simulación de la
   columna de 180px del anotador en un celular, y uno de 560px para mirar el
   detalle. No se tocó la base para probar esto.
+
+**Tanda 15 — segunda pasada al dibujo, con fuego y humo:**
+
+- Feedback del usuario: el cruzado era más largo que los demás, los colores
+  quedaban apagados, y faltaba que la brasa se viera viva.
+- **Todos los cigarrillos miden lo mismo** (`LENGTH = 64`). Como la diagonal
+  del cuadrado es más larga que el lado, el cruzado ya **no va de esquina a
+  esquina**: queda centrado en el medio y ocupa menos, que es lo que pasaría
+  en la vida real con cinco cigarrillos iguales. De paso simplificó el
+  problema de las superposiciones: como el cruzado ahora es corto, los cuatro
+  lados solo tienen que esquivarse entre ellos en las esquinas.
+- **Colores blanco y naranja** (el usuario los pidió así): papel blanco puro
+  y filtro naranja. La brasa se distingue igual porque tiene la ceniza gris
+  al lado, el degradé a amarillo casi blanco, el resplandor y el humo.
+- **La brasa late**: un elipse naranja borroso detrás de la punta que va y
+  viene de opacidad `0.3` a `0.95`, con un `animation-delay` distinto por
+  cigarrillo para que no titilen todos juntos. Se anima **solo la opacidad**,
+  no el tamaño ni el `filter`: puede haber 60 brasas en pantalla y animar el
+  blur de todas sería caro en un celular.
+- **Humo al poner cada uno**: una bocanada de dos hilitos que sube y se
+  desvanece una sola vez. Se dibuja en una capa aparte y **sin rotar**,
+  porque el humo sube derecho sin importar cómo esté acostado el cigarrillo
+  (por eso `emberPoint()` calcula dónde cae la brasa de cada uno).
+- El humo arranca porque el elemento **se monta**, no por un efecto: los
+  cigarrillos que ya estaban no se vuelven a montar al sumar un punto, así
+  que solo humea el nuevo. Y con `useState(shown)` se recuerda cuántos había
+  al abrir la página para que **al entrar no humeen los 60 de golpe**.
+  Ojo: tiene que ser `useState` y no `useRef`; leer un ref durante el render
+  lo rechaza la regla `react-hooks/refs` de ESLint.
+- Por las animaciones, `cigarette-tally.tsx` pasó a ser `"use client"`. Solo
+  lo usa `truco-board.tsx`, que ya era cliente, así que no cambia nada más.
+- Todo respeta `prefers-reduced-motion`: sin animación, el humo no aparece y
+  la brasa queda con un resplandor fijo.
 
 ### Falta para que funcione en producción
 
