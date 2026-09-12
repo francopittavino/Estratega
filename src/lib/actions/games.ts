@@ -5,6 +5,18 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { assertAdminPassword } from "@/lib/admin-password";
 import { QUICK_POINTS } from "@/lib/quick-points";
+import { assertOwner, ensureDeviceKey } from "@/lib/owner";
+
+// Toda acción que cambie puntos exige ser el dueño de la partida (el
+// navegador que la creó). Los espectadores ven el tablero pero no lo tocan.
+async function assertCanScore(gameId: string) {
+  const game = await prisma.game.findUnique({
+    where: { id: gameId },
+    select: { ownerKey: true },
+  });
+  if (!game) throw new Error("Partida inexistente");
+  await assertOwner(game.ownerKey);
+}
 
 export async function createGame(playerIds: string[]) {
   const uniqueIds = Array.from(new Set(playerIds)).filter(Boolean);
@@ -12,8 +24,11 @@ export async function createGame(playerIds: string[]) {
     throw new Error("Elegí al menos 2 jugadores para arrancar una partida");
   }
 
+  const ownerKey = await ensureDeviceKey();
+
   const game = await prisma.game.create({
     data: {
+      ownerKey,
       participants: {
         create: uniqueIds.map((playerId) => ({ playerId })),
       },
@@ -38,6 +53,7 @@ export async function setRoundScore(
   if (!(QUICK_POINTS as readonly number[]).includes(points)) {
     throw new Error("Puntaje rápido inválido");
   }
+  await assertCanScore(gameId);
 
   const round = await prisma.round.findUnique({ where: { id: roundId } });
   if (!round || round.gameId !== gameId) {
@@ -57,6 +73,8 @@ export async function setRoundScore(
 }
 
 export async function closeRound(gameId: string, roundId: string) {
+  await assertCanScore(gameId);
+
   await prisma.$transaction(async (tx) => {
     // Update condicional: si dos personas tocan "Terminar ronda" casi al
     // mismo tiempo (cada una desde su celular), solo una debe poder
@@ -100,6 +118,8 @@ export async function closeRound(gameId: string, roundId: string) {
 }
 
 export async function finishGame(gameId: string) {
+  await assertCanScore(gameId);
+
   await prisma.$transaction(async (tx) => {
     // Update condicional: si dos personas tocan "Finalizar partida" casi
     // al mismo tiempo (cada una desde su celular), solo una debe poder
@@ -172,6 +192,8 @@ export async function finishGame(gameId: string) {
 // un error de posición: descarta la ronda abierta y resta los puntos de la
 // última ronda cerrada para poder recargarlos.
 export async function goBackOneRound(gameId: string) {
+  await assertCanScore(gameId);
+
   await prisma.$transaction(async (tx) => {
     const game = await tx.game.findUnique({ where: { id: gameId } });
     if (!game || game.status !== "IN_PROGRESS") {
@@ -236,4 +258,20 @@ export async function deleteGame(gameId: string, password: string) {
   revalidatePath("/partidas");
   revalidatePath("/tops");
   revalidatePath("/");
+}
+
+// Reasigna el dueño de la partida al dispositivo actual. Sirve si el que
+// la creó perdió la cookie (borró datos, cambió de celular) o si quiere
+// pasarle el anotador a otro.
+export async function claimGame(gameId: string, password: string) {
+  assertAdminPassword(password);
+
+  const ownerKey = await ensureDeviceKey();
+  const claimed = await prisma.game.updateMany({
+    where: { id: gameId },
+    data: { ownerKey },
+  });
+  if (claimed.count === 0) throw new Error("Partida inexistente");
+
+  revalidatePath(`/partidas/${gameId}`);
 }

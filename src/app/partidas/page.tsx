@@ -103,7 +103,7 @@ function GameSection({
                   </span>
                 )}
               </Link>
-              <DeleteGameButton gameId={game.id} />
+              <DeleteGameButton gameId={game.id} kind="estratega" />
             </li>
           ))}
         </ul>

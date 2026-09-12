@@ -31,14 +31,20 @@ base real. Si en algún momento hay dudas sobre exposición de ese chat,
 rotar la contraseña de la base (dashboard de Prisma/Vercel) y regenerar el
 token de Blob.
 
-## Estado actual (última sesión: 2026-09-04/05, misma conversación)
+## Estado actual (última sesión: 2026-09-11)
 
-Primera sesión (nueve tandas). Se armó el proyecto completo desde cero (el
-repo estaba vacío, sin commits), se implementó el MVP funcional, se
-hicieron cuatro rondas de ajustes visuales a partir de feedback del
-usuario, en la tanda 6 se pusheó todo y se dejó andando en producción en
-Vercel (https://estratega-taupe.vercel.app), y en la tanda 7 se ajustó el
-ícono de la app y se agregó contraseña para editar jugadores.
+**Segunda sesión (2026-09-11)**: dos funciones nuevas grandes — "solo el
+que inició la partida puede anotar" (sin login, con cookie de dispositivo)
+y el **anotador de truco** completo, con su propia sección, su marcador de
+cigarrillos y tres rankings por equipo. Ver "Tanda 10" y "Tanda 11" más
+abajo.
+
+**Primera sesión (2026-09-04/05, nueve tandas)**: se armó el proyecto
+completo desde cero (el repo estaba vacío, sin commits), se implementó el
+MVP funcional, se hicieron cuatro rondas de ajustes visuales a partir de
+feedback del usuario, en la tanda 6 se pusheó todo y se dejó andando en
+producción en Vercel (https://estratega-taupe.vercel.app), y en la tanda 7
+se ajustó el ícono de la app y se agregó contraseña para editar jugadores.
 
 **Tanda 1 — MVP funcional:**
 
@@ -334,19 +340,119 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
   +1 tampoco se puede forzar salteando el botón). Probado en local: los
   botones muestran el set correcto y sumar +6/+7 da el total esperado.
 
+**Tanda 10 — solo el que inicia la partida puede anotar (sin login):**
+
+- El usuario pidió que los espectadores puedan mirar el marcador en vivo
+  pero no tocarlo, **sin agregar login**. Solución en `src/lib/owner.ts`:
+  al crear una partida, el navegador recibe una cookie `estratega_device`
+  con un id aleatorio (`httpOnly`, así JS no la puede leer ni falsificar,
+  `maxAge` 5 años), y en la base se guarda solo el **hash SHA-256** de ese
+  id en `Game.ownerKey` / `TrucoGame.ownerKey`. Toda acción que cambie
+  puntos (`setRoundScore`, `closeRound`, `finishGame`, `goBackOneRound`,
+  `addTrucoPoint`, `finishTrucoGame`) empieza con `assertCanScore(gameId)`,
+  que compara el hash de la cookie contra el `ownerKey` de la fila.
+- El chequeo está **en el server action**, no solo escondiendo botones: un
+  espectador que intente llamar la acción igual recibe el error. La UI
+  además no le muestra ningún botón que toque puntos.
+- **Cómo se recupera el control** (decisión del usuario): botón "Tomar el
+  control" (`src/components/claim-control.tsx`) que pide la misma
+  contraseña compartida `"estratega"` y reasigna el `ownerKey` al
+  dispositivo actual. Sirve si el dueño borró datos del navegador, cambió
+  de celular, o le quiere pasar el anotador a otro.
+- **Partidas viejas**: las que ya existían tienen `ownerKey = null` y
+  quedan abiertas para cualquiera, como venían funcionando (`isOwner()`
+  devuelve `true` si no hay dueño). No se rompió ninguna partida existente.
+- Probado en vivo (local contra la base real): con la cookie correcta se
+  ve todo; simulando otro dispositivo (cambiando el `ownerKey` en la base)
+  desaparecen los botones y aparece el cartel "Estás mirando"; con
+  contraseña incorrecta tira "Contraseña incorrecta" y con la correcta
+  vuelven los botones. Verificado tanto en El Estratega como en truco.
+
+**Tanda 11 — anotador de truco (sección nueva completa):**
+
+- Sección aparte en `/truco`, con su propio listado, su alta de partida y
+  **tres rankings** (solitarios 1v1, dúos 2v2, tríos 3v3). No se mezcla
+  nada con El Estratega: el ranking de truco no toca `Player.wins`.
+- Modelo nuevo: `TrucoGame` (teamSize 1/2/3, pointsA, pointsB, winnerTeam,
+  ownerKey, status) + `TrucoMember` (jugador + equipo A/B). Migración
+  `20260911000000_truco_y_dueno_de_partida`, **puramente aditiva**
+  (dos tablas nuevas, un enum nuevo y una columna nullable en `Game`);
+  ya aplicada a la base de producción con `prisma migrate deploy`.
+- **Marcador criollo con cigarrillos** (`src/components/cigarette-tally.tsx`):
+  cada 5 puntos es un cuadradito — cuatro cigarrillos formando el cuadrado
+  y el quinto cruzado en diagonal — dibujado en SVG puro (papel, filtro
+  naranja, ceniza y brasa encendida con resplandor). Cada lado tiene dos
+  bloques, **malas** (0-15) y **buenas** (16-30), de 3 cuadraditos cada uno.
+- Layout: dos columnas con línea divisoria al medio, las fotos de los
+  jugadores arriba de cada lado, el puntaje grande, y los cigarrillos
+  abajo. Los cuadraditos van **de a 2 por fila, no de a 3**: en un celular
+  cada mitad del anotador mide menos de 200px y con tres al lado los
+  cigarrillos no se distinguían.
+- Los botones `−` / `+` están en una barra **sticky al pie**: el anotador
+  lleno es más alto que una pantalla de celular y no se puede depender de
+  que scrollees para sumar un punto. Por eso el contenedor del tablero
+  **no** lleva `overflow-hidden` (recortaría el sticky).
+- Se juega a 30 y **no se puede pasar**: el tope está en el `where` del
+  `updateMany` (`pointsA: { lt: 30 }` para sumar, `{ gt: 0 }` para restar),
+  así que el incremento es atómico y con tope del lado del server.
+- Por eso mismo los botones `+`/`−` **no se deshabilitan** mientras hay una
+  llamada en curso: se pueden encadenar toques rápidos sin perder ninguno
+  (con `useOptimistic` en el cliente para que se vean al instante). Esto
+  fue un bug real encontrado probando: con el botón deshabilitado durante
+  el request, 4 de cada 5 toques se perdían.
+- Al llegar a 30 aparece un cartel propio "¡X llegó a 30! ¿Finalizar la
+  partida?" con "Finalizar partida" / "Seguir jugando". Si elegís seguir,
+  el botón "Finalizar partida" queda disponible abajo y **no vuelve a
+  preguntar** (`reachedTarget` solo es `true` en el toque que cruza a 30).
+- **Alta de partida** (`/truco/nueva`): elegís modalidad (1v1 / 2v2 / 3v3)
+  y tocás jugadores; entran al equipo marcado y cuando se llena, el foco
+  salta solo al otro. Tocar de nuevo a un jugador lo saca.
+- **Rankings** (`/truco/tops`): se calculan al vuelo desde las partidas
+  finalizadas, agrupando por modalidad + los ids de los jugadores del
+  equipo ordenados (así "Franco y Maru" es siempre la misma dupla, sin
+  importar de qué lado del anotador estuvieron). No hay contadores
+  guardados: borrar una partida la saca del ranking sola.
+- Probado en vivo de punta a punta contra la base real: alta 2v2 y 3v3,
+  sumar/restar, tope en 30, cartel de fin, "seguir jugando", finalizar,
+  ranking reflejando la victoria, modo espectador, "tomar el control" y
+  borrado con contraseña. **Todos los datos de prueba se borraron al
+  terminar** — la base quedó exactamente como estaba (11 jugadores,
+  3 partidas de El Estratega finalizadas, 0 de truco).
+
+**Tanda 11b — arreglos que salieron de probar lo anterior:**
+
+- **`NEXT_REDIRECT` en pantalla**: los formularios de alta envuelven la
+  llamada al server action en try/catch para mostrar errores, y eso
+  atrapaba también el "error" especial que tira `redirect()`. Se agregó
+  `src/lib/is-redirect-error.ts` y ahora se re-lanza. Afectaba también al
+  alta de partidas de El Estratega (se veía un parpadeo de "NEXT_REDIRECT"
+  antes de navegar).
+- **Borrar partida ya no usa `window.prompt`**: el campo de contraseña
+  ahora va dentro de la página (`delete-game-button.tsx`, un solo
+  componente para El Estratega y truco vía prop `kind`). Además de verse
+  mejor, esto destraba el pendiente histórico de no poder probar el
+  borrado con contraseña: `window.prompt` (y también `confirm`) congelan
+  la pestaña bajo automatización. **Verificado en vivo esta sesión.**
+- **`autoComplete="new-password"`** en los campos de contraseña: Chrome
+  autocompletaba una clave guardada de otro sitio y la concatenaba con lo
+  tipeado (se vio de verdad probando: quedaba `vokoaleestratega`). Ojo:
+  `autoComplete="off"` **no** alcanza, Chrome lo ignora en campos de
+  password.
+- El cartel de "¿finalizar?" del truco es propio y no `confirm()` nativo,
+  por lo mismo: se ve mejor en el celular y no bloquea la pestaña.
+
 ### Falta para que funcione en producción
 
-Nada bloqueante. La app funciona de punta a punta en producción (ver
-tanda 6). Lo que queda es menor/opcional:
+Nada bloqueante. Lo que queda es menor/opcional:
 
-1. Borrar (o dejar que el usuario borre) los jugadores de prueba
-   `TestProd3` y `TestProd4` de la base real — `TestProd3` está en una
-   partida en curso del usuario, así que no se puede borrar hasta que esa
-   partida se borre o termine.
-2. Probar en producción, a mano (no vía Claude/automatización — `window.prompt`
-   la bloquea): borrar partida con contraseña, renombrar/borrar jugador
-   con contraseña, y cambiar la foto de un jugador ya creado con
-   contraseña. Ninguno de los tres se pudo verificar en vivo esta sesión.
+1. ~~Borrar los jugadores de prueba `TestProd3`/`TestProd4`~~ — hecho por
+   el usuario, la base ya no los tiene.
+2. Probar en producción, a mano, lo que sigue usando `window.prompt` y no
+   se puede automatizar: renombrar/borrar jugador con contraseña y cambiar
+   la foto de un jugador ya creado con contraseña (`player-card.tsx` y
+   `editable-player-avatar.tsx`). Si molesta, se pueden pasar al mismo
+   patrón de campo inline que ya usan borrar partida y "tomar el control".
+   (Borrar partida con contraseña **ya quedó verificado**, ver tanda 11b.)
 3. Si se quiere un dominio propio en vez de `estratega-taupe.vercel.app`,
    configurarlo en Vercel (Settings → Domains). No es necesario para que
    funcione, es solo estético.
@@ -356,11 +462,15 @@ tanda 6). Lo que queda es menor/opcional:
 
 ### Pendiente / no pedido todavía (no implementado a propósito)
 
-- Autenticación real (el usuario eligió acceso libre sin login; el borrado
-  de partidas usa una contraseña compartida hardcodeada, no es auth real).
-- Puntajes negativos o fuera de +0..+5 (el usuario eligió solo botones
-  rápidos, sin carga manual).
+- Autenticación real (el usuario eligió acceso libre sin login; el dueño de
+  la partida es una cookie de dispositivo y el resto usa una contraseña
+  compartida hardcodeada, no es auth real).
+- Puntajes negativos o fuera de `QUICK_POINTS` en El Estratega (el usuario
+  eligió solo botones rápidos, sin carga manual).
 - Deshacer más de una ronda atrás (solo se puede volver un paso).
+- En el truco no hay historial de manos ni "volver atrás" más allá del `−`.
+- Los rankings de truco no muestran partidas jugadas ni porcentaje: el
+  usuario pidió explícitamente **solo ganadas**.
 
 ## Decisiones de producto (respuestas del usuario, 2026-09-04)
 
@@ -423,6 +533,31 @@ tanda 6). Lo que queda es menor/opcional:
   (`"estratega"`). La idea explícita del usuario: si alguien necesita
   editar algo, él le pasa la contraseña en el momento.
 
+### Decisiones de producto de la sesión 2026-09-11
+
+- **Solo anota el que inicia la partida**: los espectadores ven el marcador
+  en vivo pero no lo pueden tocar, **sin login**. Se resuelve con una
+  cookie de dispositivo (ver tanda 10), no con cuentas.
+- **Recuperar el control**: con la contraseña compartida `"estratega"`,
+  no con un código por partida. El usuario eligió la opción más simple, la
+  misma clave que ya usa para todo lo demás.
+- **El truco va en una sección aparte**, no mezclado con las partidas de
+  El Estratega, y su ranking es independiente (no suma a `/tops`).
+- **Truco a 30**, con malas y buenas separadas en el marcador, como el
+  anotador criollo. **No se puede pasar de 30.**
+- **Al llegar a 30 pregunta, no finaliza sola.** Si contestás que no, la
+  partida sigue y queda el botón "Finalizar partida" para cuando quieras.
+- **Los `+` y `−` suman de a uno**, sin atajos de +2/+3. Es lo más fiel al
+  anotador de verdad y el `−` sirve para corregir.
+- **Tres modalidades y tres rankings**: solitario (1v1), dúo (2v2) y trío
+  (3v3). El usuario pidió el 1v1 expresamente después de la primera ronda
+  de preguntas.
+- **Los rankings de truco muestran solo partidas ganadas**, igual que
+  `/tops` — nada de partidas jugadas ni porcentajes.
+- **Los equipos no llevan nombre**: se identifican por las fotos y los
+  nombres de los jugadores, así el alta tiene menos pasos.
+- **Los cigarrillos van encendidos, con brasa.**
+
 ## Decisiones técnicas y por qué
 
 - **`put()` de `@vercel/blob` siempre con `token: process.env.BLOB_READ_WRITE_TOKEN`
@@ -452,10 +587,36 @@ tanda 6). Lo que queda es menor/opcional:
   base: más simple y es el storage que ya usa el ecosystem de Vercel.
   `next.config.ts` tiene `images.remotePatterns` apuntando a
   `*.public.blob.vercel-storage.com`.
-- **Sin autenticación**: toda mutación (`setRoundScore`, `closeRound`,
-  `finishGame`, etc.) es un server action sin chequeo de usuario. Si en el
-  futuro se agrega una clave compartida, hay que agregar el chequeo ahí,
-  no en el cliente.
+- **Sin autenticación de usuarios, pero sí dueño de partida**: no hay
+  login. Lo que sí hay es la cookie de dispositivo de `src/lib/owner.ts`:
+  toda mutación que toque puntos empieza con `assertCanScore(gameId)`, del
+  lado del **server action**. Esconder botones en el cliente no alcanza —
+  si mañana se agrega otra acción que cambie puntos, hay que agregarle la
+  guarda ahí también.
+- **La cookie de dueño se guarda hasheada** (`SHA-256`) en la base, nunca
+  en crudo, y la cookie es `httpOnly` para que no se pueda leer ni
+  falsificar desde JS.
+- **Los topes de puntaje del truco viven en el `where` del `updateMany`**,
+  no en un read-modify-write: `pointsA: { lt: 30 }` para sumar y
+  `{ gt: 0 }` para restar. Así el incremento es atómico y toques rápidos
+  seguidos no se pisan entre sí. Mismo criterio que los `updateMany`
+  condicionales de `closeRound`/`finishGame` (ver tanda 8).
+- **El ranking de truco se calcula al vuelo**, no con contadores guardados
+  como `Player.wins`. Son pocas partidas, y así borrar una la saca del
+  ranking sin tener que acordarse de descontar nada (que es justo lo que
+  sí hay que hacer en `deleteGame` de El Estratega).
+- **Nada de `window.prompt` ni `confirm()` en código nuevo**: congelan la
+  pestaña entera y hacen imposible probar el flujo con el navegador
+  automatizado (pasó en la tanda 7 y de nuevo esta sesión). Los diálogos
+  nuevos son componentes de la propia página. Queda `confirm()` viejo en
+  `game-board.tsx` y `window.prompt` en `player-card.tsx` /
+  `editable-player-avatar.tsx`.
+- **`autoComplete="new-password"` en todo campo de contraseña**: Chrome
+  ignora `autoComplete="off"` en inputs de tipo password y autocompleta
+  claves guardadas de otros sitios, concatenándolas con lo que tipeás.
+- **`redirect()` dentro de un try/catch hay que re-lanzarlo**: se propaga
+  como un error con `digest` que arranca con `NEXT_REDIRECT`. Ver
+  `src/lib/is-redirect-error.ts`.
 - **Credenciales reales solo en `.env` local**: cuando el usuario pasa
   secretos de producción por el chat (pasó en la tanda 3), van directo a
   `.env` (gitignorado), nunca a `.env.example` ni a ningún archivo
@@ -464,29 +625,40 @@ tanda 6). Lo que queda es menor/opcional:
 ## Estructura relevante
 
 ```
-prisma/schema.prisma          modelos: Player, Game, GameParticipant, Round, RoundScore
+prisma/schema.prisma          Player, Game, GameParticipant, Round, RoundScore,
+                               TrucoGame, TrucoMember
 src/lib/prisma.ts             singleton de PrismaClient
 src/lib/admin-password.ts     ADMIN_PASSWORD ("estratega") + assertAdminPassword()
+src/lib/owner.ts              cookie de dispositivo + isOwner/assertOwner (dueño de partida)
+src/lib/quick-points.ts       QUICK_POINTS de El Estratega [0,2,3,4,5,6,7]
+src/lib/truco.ts              reglas del truco: TRUCO_TARGET=30, malas/buenas, modalidades
+src/lib/is-redirect-error.ts  para no tragarse el redirect() en un try/catch
 src/lib/actions/players.ts    createPlayer (sin contraseña), updatePlayerPhoto,
                                updatePlayerName, deletePlayer (estas 3 piden contraseña)
 src/lib/actions/games.ts      createGame, setRoundScore, closeRound, finishGame,
-                               goBackOneRound, deleteGame (pide contraseña)
+                               goBackOneRound (estas 4 exigen ser el dueño),
+                               deleteGame y claimGame (piden contraseña)
+src/lib/actions/truco.ts      createTrucoGame, addTrucoPoint, finishTrucoGame (exigen
+                               dueño), claimTrucoGame y deleteTrucoGame (contraseña)
 src/app/icon.png               ícono de la app (recorte del emblema de fondo-estratega.jpg)
-src/components/side-nav.tsx         botón hamburguesa flotante + menú desde la izquierda
+src/components/side-nav.tsx         hamburguesa flotante + menú en 3 secciones
 src/components/podium.tsx           podio animado del top 3 (home)
-src/components/game-board.tsx       UI del anotador en vivo (client component)
-src/components/new-game-form.tsx    selector de participantes (client component)
+src/components/game-board.tsx       UI del anotador de El Estratega (client component)
+src/components/truco-board.tsx      UI del anotador de truco + cartel de fin de partida
+src/components/cigarette-tally.tsx  los cuadraditos de cigarrillos en SVG
+src/components/new-game-form.tsx    selector de participantes de El Estratega
+src/components/new-truco-game-form.tsx  modalidad + armado de los dos equipos
+src/components/claim-control.tsx    cartel "Estás mirando" + "Tomar el control"
 src/components/player-avatar.tsx    avatar con foto o iniciales (solo lectura)
 src/components/editable-player-avatar.tsx  avatar + cambio de foto (click abre file picker)
 src/components/player-card.tsx      tarjeta de jugador: avatar editable + nombre editable + borrar
-src/components/delete-game-button.tsx      botón de tacho con prompt de contraseña
-src/app/page.tsx               home: título + "Iniciar partida" + podio, centrado, sin logo
+src/components/delete-game-button.tsx   tacho + campo de contraseña inline (kind: estratega|truco)
+src/app/page.tsx               home: título + "Iniciar partida" + link a truco + podio
 src/app/layout.tsx             fondo fijo de imagen + overlay oscuro (bg-background/65)
 src/app/jugadores/page.tsx
-src/app/partidas/page.tsx
-src/app/partidas/nueva/page.tsx
-src/app/partidas/[id]/page.tsx
+src/app/partidas/page.tsx      · /nueva · /[id]
 src/app/tops/page.tsx
+src/app/truco/page.tsx         · /nueva · /[id] · /tops (los 3 rankings)
 public/utn-logo.jpg            emblema UTN suelto (dominio público) — ya no se usa en ninguna
                                 página, quedó del diseño viejo; no hace daño pero se puede borrar
 public/fondo-estratega.jpg      fondo de pantalla de toda la app (imagen que pasó el usuario)

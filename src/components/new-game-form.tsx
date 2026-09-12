@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { createGame } from "@/lib/actions/games";
 import { PlayerAvatar } from "@/components/player-avatar";
+import { isRedirectError } from "@/lib/is-redirect-error";
 
 type Player = { id: string; name: string; photoUrl: string | null };
 
@@ -27,6 +28,7 @@ export function NewGameForm({ players }: { players: Player[] }) {
       try {
         await createGame(selected);
       } catch (err) {
+        if (isRedirectError(err)) throw err;
         setError(err instanceof Error ? err.message : "Ocurrió un error");
       }
     });

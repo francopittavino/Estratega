@@ -16,6 +16,7 @@ model Player {
   createdAt DateTime @default(now())
 
   participations GameParticipant[]
+  trucoMembers   TrucoMember[]
 
   @@index([name])
 }
@@ -30,16 +31,20 @@ model Game {
   status     GameStatus @default(IN_PROGRESS)
   createdAt  DateTime   @default(now())
   finishedAt DateTime?
+  // Hash del identificador del dispositivo que creo la partida: solo ese
+  // puede anotar puntos. Null = partida vieja (anterior a esta funcion),
+  // que queda abierta para cualquiera. Ver src/lib/owner.ts.
+  ownerKey   String?
 
   participants GameParticipant[]
   rounds       Round[]
 }
 
 model GameParticipant {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   gameId      String
   playerId    String
-  totalPoints Int    @default(0)
+  totalPoints Int     @default(0)
   isWinner    Boolean @default(false)
 
   game        Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
@@ -71,4 +76,43 @@ model RoundScore {
   participant GameParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   @@unique([roundId, participantId])
+}
+
+// ---------------------------------------------------------------------------
+// Truco: anotador aparte de El Estratega, con su propio ranking por equipo.
+// ---------------------------------------------------------------------------
+
+enum TrucoTeam {
+  A
+  B
+}
+
+model TrucoGame {
+  id         String     @id @default(cuid())
+  // 1 = solitario (1 vs 1), 2 = dúo (2 vs 2), 3 = trío (3 vs 3).
+  teamSize   Int
+  status     GameStatus @default(IN_PROGRESS)
+  pointsA    Int        @default(0)
+  pointsB    Int        @default(0)
+  winnerTeam TrucoTeam?
+  // Hash del identificador del dispositivo que creó la partida: solo ese
+  // puede sumar o restar puntos. Ver src/lib/owner.ts.
+  ownerKey   String?
+  createdAt  DateTime   @default(now())
+  finishedAt DateTime?
+
+  members TrucoMember[]
+}
+
+model TrucoMember {
+  id       String    @id @default(cuid())
+  gameId   String
+  playerId String
+  team     TrucoTeam
+
+  game   TrucoGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player Player    @relation(fields: [playerId], references: [id])
+
+  @@unique([gameId, playerId])
+  @@index([gameId])
 }

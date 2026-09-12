@@ -25,6 +25,7 @@ type Props = {
   roundNumber: number;
   openRoundId: string | null;
   participants: Participant[];
+  canScore: boolean;
 };
 
 export function GameBoard({
@@ -33,8 +34,12 @@ export function GameBoard({
   roundNumber,
   openRoundId,
   participants,
+  canScore,
 }: Props) {
   const [isPending, startTransition] = useTransition();
+  // Los espectadores ven el tablero igual, pero sin ningún botón que toque
+  // los puntos (ver src/lib/owner.ts).
+  const editable = status === "IN_PROGRESS" && canScore;
 
   function handlePick(participantId: string, points: number) {
     if (!openRoundId) return;
@@ -74,7 +79,7 @@ export function GameBoard({
         <h1 className="text-xl font-bold">
           {status === "IN_PROGRESS" ? `Ronda ${roundNumber}` : "Partida finalizada"}
         </h1>
-        {status === "IN_PROGRESS" && (
+        {editable && (
           <div className="flex gap-2 flex-wrap">
             {roundNumber > 1 && (
               <button
@@ -134,7 +139,7 @@ export function GameBoard({
               </p>
             </div>
 
-            {status === "IN_PROGRESS" && (
+            {editable && (
               <div className="flex gap-1.5 pl-8 flex-wrap">
                 {QUICK_POINTS.map((points) => {
                   const active = participant.currentRoundPoints === points;

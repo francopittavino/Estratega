@@ -27,6 +27,13 @@ export default async function Home() {
         Iniciar partida
       </Link>
 
+      <Link
+        href="/truco"
+        className="text-sm text-muted underline underline-offset-4 hover:text-foreground transition-colors -mt-2"
+      >
+        o anotá un truco
+      </Link>
+
       <div className="w-full flex flex-col items-center gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
           Top 3 actual

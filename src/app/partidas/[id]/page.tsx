@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { GameBoard } from "@/components/game-board";
+import { ClaimControl } from "@/components/claim-control";
+import { isOwner, readDeviceKey } from "@/lib/owner";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,8 @@ export default async function PartidaPage({
 
   if (!game) notFound();
 
+  const canScore = isOwner(game.ownerKey, await readDeviceKey());
+
   const openRound = game.rounds.find((r) => !r.closedAt) ?? null;
   const roundNumber = game.rounds[0]?.number ?? 1;
 
@@ -41,12 +45,18 @@ export default async function PartidaPage({
     }));
 
   return (
-    <GameBoard
-      gameId={game.id}
-      status={game.status}
-      roundNumber={roundNumber}
-      openRoundId={openRound?.id ?? null}
-      participants={participants}
-    />
+    <div className="flex flex-col gap-4">
+      {!canScore && game.status === "IN_PROGRESS" && (
+        <ClaimControl gameId={game.id} kind="estratega" />
+      )}
+      <GameBoard
+        gameId={game.id}
+        status={game.status}
+        roundNumber={roundNumber}
+        openRoundId={openRound?.id ?? null}
+        participants={participants}
+        canScore={canScore}
+      />
+    </div>
   );
 }
