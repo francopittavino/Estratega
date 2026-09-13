@@ -654,6 +654,17 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
   venía en camino, y entonces no aparece el cartel de "¿finalizar?". Con
   toques humanos no pasa, y el botón "Finalizar" está siempre disponible
   igual.
+- **Sin rótulos de "malas" y "buenas"** (pedido del usuario al ver el
+  resultado en el celular): el alto que se llevaban ahora es cuadradito. La
+  raya del medio alcanza para saber dónde empieza cada mitad, igual que en el
+  anotador de verdad. Quedaron como `sr-only` para el lector de pantalla, que
+  no ocupa lugar.
+- De paso, el `viewBox` de cada cuadradito pasó de `0 0 100 100` a
+  `4 4 92 92`: el cuadrado va de 10 a 90 y los cigarrillos de los lados
+  sobresalen hasta ~6 y ~94, así que los 10 de margen que había eran aire. El
+  dibujo se ve ~9% más grande sin cambiar una sola medida. **Si algún día se
+  engrosan los cigarrillos, hay que agrandar ese margen de nuevo** o las
+  puntas se van a recortar.
 - Probado además a 360x640 y 390x844 (iframes, en una página temporal
   `/preview-phone` + `/preview-truco` + `/preview-cigarrillos`, **las tres
   borradas antes de commitear**), en la vista del que anota y en la del que
@@ -784,6 +795,9 @@ Nada bloqueante. Lo que queda es menor/opcional:
 - **Los cigarrillos tienen que parecer cigarrillos de verdad**, no palitos de
   colores: papel con volumen, filtro de corcho con su textura, ceniza y brasa.
 - **Los cuadraditos van uno abajo del otro**, no de a dos por fila.
+- **Sin rótulos de "malas" y "buenas"**: entre el rótulo y un cuadradito más
+  grande, el usuario eligió el cuadradito. La raya del medio ya dice dónde
+  empieza cada mitad.
 - **Los 30 puntos tienen que entrar en la pantalla del celular sin bajar.**
   Esto manda sobre el tamaño del dibujo: si algún día se agrega algo arriba
   del anotador, lo que se achica son los cuadraditos, no se vuelve a scrollear.

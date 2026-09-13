@@ -291,8 +291,11 @@ export function CigaretteSquare({ count }: { count: number }) {
   const [alAbrir] = useState(shown);
 
   return (
+    // El cuadrado va de 10 a 90, pero los cigarrillos de los lados sobresalen
+    // hasta ~6 y ~94 (la mitad de su grosor). Recortando el viewBox a ese borde
+    // el dibujo se ve ~9% más grande sin cambiar ninguna medida.
     <svg
-      viewBox="0 0 100 100"
+      viewBox="4 4 92 92"
       className="w-full h-full overflow-visible"
       role="img"
       aria-label={`${shown} de 5`}

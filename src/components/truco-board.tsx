@@ -265,16 +265,16 @@ function TeamColumn({
         </p>
       </div>
 
-      <p className="shrink-0 text-[9px] leading-none uppercase tracking-[0.2em] text-muted text-center">
-        Malas
-      </p>
+      {/* Sin rótulos de "malas" y "buenas": el alto que se llevaban ahora es
+          cuadradito, que es lo que importa mirar. La raya del medio alcanza
+          para saber dónde empieza cada mitad, como en el anotador de verdad.
+          Quedan para el lector de pantalla, que no ocupa lugar. */}
+      <span className="sr-only">Malas</span>
       <TallyBlock value={malas} />
 
       <div className="shrink-0 h-0.5 w-full bg-border rounded-full" />
 
-      <p className="shrink-0 text-[9px] leading-none uppercase tracking-[0.2em] text-muted text-center">
-        Buenas
-      </p>
+      <span className="sr-only">Buenas</span>
       <TallyBlock value={buenas} />
     </div>
   );
