@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { PlayerAvatar } from "@/components/player-avatar";
-import { TallyBlock } from "@/components/cigarette-tally";
+import { CigaretteDefs, TallyBlock } from "@/components/cigarette-tally";
 import { addTrucoPoint, finishTrucoGame } from "@/lib/actions/truco";
 import { splitScore, TEAM_SIZE_SHORT, TRUCO_TARGET } from "@/lib/truco";
 
@@ -89,29 +89,59 @@ export function TrucoBoard({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h1 className="text-xl font-bold">
-          {inProgress ? "Truco" : "Partida finalizada"}
-        </h1>
-        <p className="text-xs uppercase tracking-widest text-muted">
-          {TEAM_SIZE_SHORT[teamSize]} · a {TRUCO_TARGET}
-        </p>
+    <div className="flex-1 min-h-0 flex flex-col gap-2">
+      {/* Los degradés de los cigarrillos, una sola vez para toda la página. */}
+      <CigaretteDefs />
+
+      <div className="shrink-0 flex items-center justify-between gap-2">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h1 className="text-lg font-bold leading-none truncate">
+            {inProgress ? "Truco" : "Partida finalizada"}
+          </h1>
+          <p className="text-[10px] uppercase tracking-widest text-muted whitespace-nowrap">
+            {TEAM_SIZE_SHORT[teamSize]} · a {TRUCO_TARGET}
+          </p>
+        </div>
+        {/* Arriba y chiquito: abajo no entra sin robarle alto al anotador. */}
+        {editable && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() =>
+              setAsking({
+                team: points.A >= points.B ? "A" : "B",
+                reachedTarget: false,
+              })
+            }
+            className="shrink-0 border border-primary text-primary rounded-md px-3 py-1.5 text-xs font-medium hover:bg-primary/10 transition-colors disabled:opacity-60"
+          >
+            Finalizar
+          </button>
+        )}
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="shrink-0 text-sm text-red-400">{error}</p>}
 
-      {/* Sin overflow-hidden: la barra de botones de abajo es sticky y un
-          ancestro con overflow recortado la dejaría de pegar al viewport. */}
-      <div className="bg-card border border-border shadow-lg shadow-black/30 rounded-xl">
-        <div className="grid grid-cols-2">
+      {/* El anotador se come todo el alto que queda y los cuadraditos se
+          achican solos, así los 30 puntos entran en la pantalla del celular
+          sin scrollear. Los + y − van en dos barras a los costados, cada una
+          pegada a la columna de su equipo y a mano del pulgar. */}
+      <div className="flex-1 min-h-0 flex items-stretch gap-1.5">
+        {editable && (
+          <TeamControls
+            team={teamA}
+            onPoint={(delta) => handlePoint("A", delta)}
+          />
+        )}
+
+        <div className="flex-1 min-w-0 flex bg-card border border-border shadow-lg shadow-black/30 rounded-xl">
           <TeamColumn
             members={teamA}
             points={points.A}
             isWinner={winnerTeam === "A"}
             showTrophy={!inProgress}
           />
-          <div className="border-l-2 border-border">
+          <div className="flex-1 min-w-0 border-l-2 border-border flex">
             <TeamColumn
               members={teamB}
               points={points.B}
@@ -121,34 +151,13 @@ export function TrucoBoard({
           </div>
         </div>
 
-        {/* Los botones quedan pegados abajo de la pantalla: el anotador es
-            más alto que un celular y no se puede depender de que scrollees
-            para sumar un punto. */}
         {editable && (
-          <div className="sticky bottom-0 grid grid-cols-2 bg-card/95 backdrop-blur border-t border-border rounded-b-xl">
-            <TeamControls onPoint={(delta) => handlePoint("A", delta)} />
-            <div className="border-l-2 border-border">
-              <TeamControls onPoint={(delta) => handlePoint("B", delta)} />
-            </div>
-          </div>
+          <TeamControls
+            team={teamB}
+            onPoint={(delta) => handlePoint("B", delta)}
+          />
         )}
       </div>
-
-      {editable && (
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() =>
-            setAsking({
-              team: points.A >= points.B ? "A" : "B",
-              reachedTarget: false,
-            })
-          }
-          className="self-center border border-primary text-primary rounded-md px-5 py-2 text-sm font-medium hover:bg-primary/10 transition-colors disabled:opacity-60"
-        >
-          Finalizar partida
-        </button>
-      )}
 
       {asking && (
         <FinishDialog
@@ -210,6 +219,9 @@ function FinishDialog({
   );
 }
 
+// La columna de un equipo: arriba quién es y cuánto va, abajo los seis
+// cuadraditos (tres de malas y tres de buenas) uno abajo del otro, partidos
+// por la raya del anotador criollo.
 function TeamColumn({
   members,
   points,
@@ -224,58 +236,78 @@ function TeamColumn({
   const { malas, buenas } = splitScore(points);
 
   return (
-    <div className="p-1.5 sm:p-3 flex flex-col gap-2.5">
-      <div className="flex flex-col items-center gap-1">
-        <div className="flex justify-center -space-x-1.5">
-          {members.map((m) => (
-            <PlayerAvatar
-              key={m.id}
-              name={m.name}
-              photoUrl={m.photoUrl}
-              size={40}
-            />
-          ))}
+    <div className="flex-1 min-w-0 flex flex-col gap-1 px-1 py-1.5">
+      <div className="shrink-0 flex flex-col items-center gap-0.5">
+        {/* Las fotos y el puntaje van en la misma línea: apilados se comen
+            el alto que necesitan los cuadraditos. */}
+        <div className="flex items-center justify-center gap-1.5">
+          <div className="flex -space-x-1.5">
+            {members.map((m) => (
+              <PlayerAvatar
+                key={m.id}
+                name={m.name}
+                photoUrl={m.photoUrl}
+                size={28}
+              />
+            ))}
+          </div>
+          <p className="text-2xl font-bold text-primary tabular-nums leading-none">
+            {/* key = puntaje: al cambiar, React remonta el span y se vuelve a
+                disparar el destello, sin necesidad de estado ni efectos. */}
+            <span key={points} className="score-pop">
+              {points}
+            </span>
+            {showTrophy && isWinner && <span className="text-lg"> 🏆</span>}
+          </p>
         </div>
-        <p className="text-xs text-center leading-tight text-muted line-clamp-2">
+        <p className="w-full text-[10px] text-center leading-tight text-muted truncate">
           {members.map((m) => m.name).join(" · ")}
-        </p>
-        <p className="text-3xl sm:text-4xl font-bold text-primary tabular-nums leading-none">
-          {/* key = puntaje: al cambiar, React remonta el span y se vuelve a
-              disparar el destello, sin necesidad de estado ni efectos. */}
-          <span key={points} className="score-pop">
-            {points}
-          </span>
-          {showTrophy && isWinner && <span className="text-2xl"> 🏆</span>}
         </p>
       </div>
 
-      <TallyBlock value={malas} label="Malas" />
-      <TallyBlock value={buenas} label="Buenas" />
+      <p className="shrink-0 text-[9px] leading-none uppercase tracking-[0.2em] text-muted text-center">
+        Malas
+      </p>
+      <TallyBlock value={malas} />
+
+      <div className="shrink-0 h-0.5 w-full bg-border rounded-full" />
+
+      <p className="shrink-0 text-[9px] leading-none uppercase tracking-[0.2em] text-muted text-center">
+        Buenas
+      </p>
+      <TallyBlock value={buenas} />
     </div>
   );
 }
 
-// El + y el - no se bloquean mientras hay una llamada en curso: el
-// incremento del server es atómico, así que se pueden encadenar toques sin
-// perder ninguno.
-function TeamControls({ onPoint }: { onPoint: (delta: 1 | -1) => void }) {
+// Las dos barras de los costados. El + y el − no se bloquean mientras hay una
+// llamada en curso: el incremento del server es atómico, así que se pueden
+// encadenar toques sin perder ninguno. Ocupan todo el alto de la columna para
+// que no haya forma de errarle con el pulgar.
+function TeamControls({
+  team,
+  onPoint,
+}: {
+  team: Member[];
+  onPoint: (delta: 1 | -1) => void;
+}) {
   return (
-    <div className="flex gap-2 p-2">
+    <div className="shrink-0 w-12 sm:w-16 flex flex-col gap-1.5">
       <button
         type="button"
-        aria-label="Restar un punto"
-        onClick={() => onPoint(-1)}
-        className="flex-1 h-12 rounded-lg border border-border bg-background text-xl font-bold text-muted hover:border-primary/50 hover:text-foreground active:scale-95 transition-transform"
+        aria-label={`Sumar un punto a ${teamLabel(team)}`}
+        onClick={() => onPoint(1)}
+        className="flex-[2] rounded-xl bg-primary text-white text-3xl font-bold shadow-md shadow-primary/20 hover:bg-primary-dark active:scale-95 transition-transform"
       >
-        −
+        +
       </button>
       <button
         type="button"
-        aria-label="Sumar un punto"
-        onClick={() => onPoint(1)}
-        className="flex-[2] h-12 rounded-lg bg-primary text-white text-2xl font-bold shadow-md shadow-primary/20 hover:bg-primary-dark active:scale-95 transition-transform"
+        aria-label={`Restar un punto a ${teamLabel(team)}`}
+        onClick={() => onPoint(-1)}
+        className="flex-1 rounded-xl border border-border bg-background text-2xl font-bold text-muted hover:border-primary/50 hover:text-foreground active:scale-95 transition-transform"
       >
-        +
+        −
       </button>
     </div>
   );

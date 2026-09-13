@@ -28,7 +28,10 @@ export default async function PartidaTrucoPage({
   });
 
   return (
-    <div className="flex flex-col gap-4">
+    // Alto fijo de pantalla (menos el padding del <main>: pt-16 + pb-6) para
+    // que el anotador se reparta lo que hay y los 30 puntos entren sin
+    // scrollear. Adentro todo va con flex-1 + min-h-0.
+    <div className="flex flex-col gap-2 h-[calc(100dvh-5.5rem)]">
       {/* Los que solo miran no tienen forma de enterarse de un cambio hecho
           en otro celular: se les refresca el marcador solo. */}
       <LiveRefresh enabled={!canScore && game.status === "IN_PROGRESS"} />

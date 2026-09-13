@@ -31,7 +31,17 @@ base real. Si en algún momento hay dudas sobre exposición de ese chat,
 rotar la contraseña de la base (dashboard de Prisma/Vercel) y regenerar el
 token de Blob.
 
-## Estado actual (última sesión: 2026-09-11)
+## Estado actual (última sesión: 2026-09-12)
+
+**Tercera sesión (2026-09-12)**: se rehizo el anotador de truco para que
+entre entero en la pantalla del celular (tanda 16). Los cigarrillos pasaron a
+ser un dibujo realista (papel con volumen, corcho con puntitos, ceniza y
+brasa), los seis cuadraditos de cada equipo van uno abajo del otro y se
+achican solos para que los 30 puntos entren sin scrollear, y el `+` y el `−`
+son ahora dos barras verticales a los costados en vez de la barra pegada
+abajo. Ojo: la base ya tiene **partidas de truco reales** del usuario (4
+finalizadas al 2026-09-12), así que los datos de prueba hay que borrarlos por
+id, no vaciando la tabla.
 
 **Segunda sesión (2026-09-11)**: dos funciones nuevas grandes — "solo el
 que inició la partida puede anotar" (sin login, con cookie de dispositivo)
@@ -584,6 +594,71 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
 - Todo respeta `prefers-reduced-motion`: sin animación, el humo no aparece y
   la brasa queda con un resplandor fijo.
 
+**Tanda 16 — cigarrillos de verdad y los 30 puntos en una pantalla:**
+
+- Pedido del usuario: que los cigarrillos parezcan cigarrillos reales, que los
+  cuadraditos vayan **uno abajo del otro**, que los **30 puntos entren en la
+  pantalla del celular sin scrollear**, y que el `+` y el `−` estén **a los
+  costados**.
+- **El dibujo ahora es un cigarrillo y no un palito de colores**: papel con
+  degradé vertical (brillo arriba, sombra abajo) para que se lea como un
+  cilindro y no como un rectángulo; filtro de corcho con su textura de
+  puntitos; las dos rayitas finas donde el papel monta sobre el corcho; la
+  boquilla un poco más oscura; ceniza gris clara y quebrada en la punta; y la
+  brasa como un anillo finito entre la ceniza y el papel chamuscado. Se
+  afinó el grosor (de 9 a 7.5 sobre 64 de largo) para acercarlo a las
+  proporciones reales (84mm x 8mm).
+- **Los degradés viven en un `<svg>` de `<defs>` aparte** (`CigaretteDefs`,
+  montado una sola vez por `truco-board`). Un degradé se declara por id, y
+  como cada cuadradito es su propio `<svg>`, tenerlos adentro habría metido
+  doce copias de los mismos ids en el DOM. Un paint server se puede
+  referenciar desde otro `<svg>` del mismo documento, así que alcanza con que
+  el componente esté montado en algún lado de la página. **Si algún día se
+  usa `CigaretteSquare` fuera del truco, hay que acordarse de montar también
+  `CigaretteDefs`** o los cigarrillos salen sin color.
+- **Los puntitos del corcho son un `<pattern>`**, no círculos sueltos: con el
+  anotador lleno hay 60 cigarrillos, y dibujarle ocho puntitos a cada uno
+  sumaba 500 elementos al DOM para nada.
+- **Los seis cuadraditos de cada equipo van en una sola columna** (tres de
+  malas, tres de buenas, partidos por la raya del anotador criollo) y **se
+  achican solos**: cada uno es un `flex-1 min-h-0` y el `<svg>` se estira al
+  alto que le toca, centrándose con el `preserveAspectRatio` que trae por
+  defecto. Por eso el cuadrado queda cuadrado sin importar el ancho de la
+  columna, y los 30 puntos entran en cualquier pantalla sin scrollear.
+- Para que eso funcione, la página de la partida tiene **alto fijo de
+  pantalla**: `h-[calc(100dvh-5.5rem)]` (los `5.5rem` son el `pt-16 pb-6` del
+  `<main>`), y adentro todo va con `flex-1 min-h-0`. Va `dvh` y no `vh`
+  porque en el celular la barra del navegador cambia el alto útil.
+- **El `+` y el `−` pasaron a dos barras verticales a los costados**, una por
+  equipo, pegadas a la columna de su equipo y de alto completo (el `+` se
+  lleva dos tercios). Antes eran una barra `sticky` abajo, que existía justo
+  porque el anotador era más alto que la pantalla — ahora que entra entero, no
+  hace falta. De paso son un blanco enorme para el pulgar y no hay forma de
+  errarle.
+- El botón "Finalizar partida" se achicó y **se mudó arriba a la derecha**
+  (dice solo "Finalizar"): abajo le robaba a los cuadraditos el alto que
+  necesitan.
+- En la columna de cada equipo, las fotos y el puntaje ahora van **en la misma
+  línea** en vez de apilados, por lo mismo.
+- **Probado en vivo contra la base real**: se creó una partida 1v1 de prueba,
+  se le sumaron 7 puntos de un saque (los siete toques entraron, el
+  incremento del server sigue siendo atómico), se probó el `−`, se llegó a 30
+  con los seis cuadraditos completos en pantalla sin scrollear, y salió el
+  cartel de "¡Franco llegó a 30!". **La partida de prueba se borró al
+  terminar** — quedaron las 4 partidas de truco reales que ya tenía el
+  usuario, todas finalizadas, y como la de prueba nunca se finalizó, no tocó
+  ningún ranking.
+- Un detalle que salió probando y **no es un bug**: si se tocan 24 veces el
+  `+` en menos de un segundo (cosa que solo pasa automatizando), el toque que
+  cruza a 30 puede encontrar el tope ya aplicado por un request anterior que
+  venía en camino, y entonces no aparece el cartel de "¿finalizar?". Con
+  toques humanos no pasa, y el botón "Finalizar" está siempre disponible
+  igual.
+- Probado además a 360x640 y 390x844 (iframes, en una página temporal
+  `/preview-phone` + `/preview-truco` + `/preview-cigarrillos`, **las tres
+  borradas antes de commitear**), en la vista del que anota y en la del que
+  mira (con el cartel de "Tomar el control" arriba, que también entra).
+
 ### Falta para que funcione en producción
 
 Nada bloqueante. Lo que queda es menor/opcional:
@@ -704,6 +779,16 @@ Nada bloqueante. Lo que queda es menor/opcional:
   cualquier partida aunque no sepa la que puso el otro, y el que arma una
   partida rápida no está obligado a inventar una clave.
 
+### Decisiones de producto de la sesión 2026-09-12
+
+- **Los cigarrillos tienen que parecer cigarrillos de verdad**, no palitos de
+  colores: papel con volumen, filtro de corcho con su textura, ceniza y brasa.
+- **Los cuadraditos van uno abajo del otro**, no de a dos por fila.
+- **Los 30 puntos tienen que entrar en la pantalla del celular sin bajar.**
+  Esto manda sobre el tamaño del dibujo: si algún día se agrega algo arriba
+  del anotador, lo que se achica son los cuadraditos, no se vuelve a scrollear.
+- **El `+` y el `−` van a los costados**, uno por equipo.
+
 ## Decisiones técnicas y por qué
 
 - **`put()` de `@vercel/blob` siempre con `token: process.env.BLOB_READ_WRITE_TOKEN`
@@ -776,6 +861,18 @@ Nada bloqueante. Lo que queda es menor/opcional:
 - **`redirect()` dentro de un try/catch hay que re-lanzarlo**: se propaga
   como un error con `digest` que arranca con `NEXT_REDIRECT`. Ver
   `src/lib/is-redirect-error.ts`.
+- **El anotador de truco es una pantalla fija, no una página que scrollea**:
+  la partida vive en `h-[calc(100dvh-5.5rem)]` y todo lo de adentro se reparte
+  ese alto con `flex-1` + `min-h-0`. Los cuadraditos se achican solos y el
+  `<svg>` se centra con el `preserveAspectRatio` que trae por defecto, así que
+  el cuadrado sigue siendo cuadrado a cualquier ancho. Si se agrega algo
+  arriba, hay que dejarlo `shrink-0` para que lo que ceda sean los cuadrados.
+  Va `dvh` y no `vh`: en el celular la barra del navegador cambia el alto útil.
+- **Los degradés de los cigarrillos van en un `<svg>` de `<defs>` único**
+  (`CigaretteDefs`): se referencian por id y cada cuadradito es su propio
+  `<svg>`, así que declararlos adentro habría dejado doce copias del mismo id
+  en el DOM. Quien use `CigaretteSquare` tiene que montar también
+  `CigaretteDefs` en la página.
 - **Credenciales reales solo en `.env` local**: cuando el usuario pasa
   secretos de producción por el chat (pasó en la tanda 3), van directo a
   `.env` (gitignorado), nunca a `.env.example` ni a ningún archivo
@@ -805,7 +902,8 @@ src/components/side-nav.tsx         hamburguesa flotante + menú en 3 secciones
 src/components/podium.tsx           podio animado del top 3 (home)
 src/components/game-board.tsx       UI del anotador de El Estratega (client component)
 src/components/truco-board.tsx      UI del anotador de truco + cartel de fin de partida
-src/components/cigarette-tally.tsx  los cuadraditos de cigarrillos en SVG
+src/components/cigarette-tally.tsx  los cuadraditos de cigarrillos en SVG +
+                                     CigaretteDefs (los degradés, una vez por página)
 src/components/new-game-form.tsx    selector de participantes de El Estratega
 src/components/new-truco-game-form.tsx  modalidad + armado de los dos equipos
 src/components/claim-control.tsx    cartel "Estás mirando" + "Tomar el control"
