@@ -88,15 +88,24 @@ export async function addTrucoPoint(
   // veces seguidas sin esperar la respuesta del server y no se pierde
   // ningún toque ni se pisan entre sí.
   const limit = delta === 1 ? { lt: TRUCO_TARGET } : { gt: 0 };
-  const changed = await prisma.trucoGame.updateMany({
-    where:
-      team === "A"
-        ? { id: gameId, status: "IN_PROGRESS", pointsA: limit }
-        : { id: gameId, status: "IN_PROGRESS", pointsB: limit },
-    data:
-      team === "A"
-        ? { pointsA: { increment: delta } }
-        : { pointsB: { increment: delta } },
+  const changed = await prisma.$transaction(async (tx) => {
+    const result = await tx.trucoGame.updateMany({
+      where:
+        team === "A"
+          ? { id: gameId, status: "IN_PROGRESS", pointsA: limit }
+          : { id: gameId, status: "IN_PROGRESS", pointsB: limit },
+      data:
+        team === "A"
+          ? { pointsA: { increment: delta } }
+          : { pointsB: { increment: delta } },
+    });
+    // Para el gráfico: se anota solo el toque que de verdad movió el
+    // puntaje, en la misma transacción, así el historial siempre suma lo
+    // mismo que el marcador.
+    if (result.count > 0) {
+      await tx.trucoScoreEvent.create({ data: { gameId, team, delta } });
+    }
+    return result;
   });
 
   const game = await prisma.trucoGame.findUnique({

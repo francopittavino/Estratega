@@ -14,7 +14,10 @@ export default async function PartidaTrucoPage({
 
   const game = await prisma.trucoGame.findUnique({
     where: { id },
-    include: { members: { include: { player: true } } },
+    include: {
+      members: { include: { player: true } },
+      scoreEvents: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+    },
   });
 
   if (!game) notFound();
@@ -48,6 +51,15 @@ export default async function PartidaTrucoPage({
         teamA={game.members.filter((m) => m.team === "A").map(toMember)}
         teamB={game.members.filter((m) => m.team === "B").map(toMember)}
         canScore={canScore}
+        history={{
+          startedAt: game.createdAt.getTime(),
+          finishedAt: game.finishedAt?.getTime() ?? null,
+          events: game.scoreEvents.map((e) => ({
+            team: e.team,
+            delta: e.delta,
+            at: e.createdAt.getTime(),
+          })),
+        }}
       />
     </div>
   );

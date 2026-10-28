@@ -109,7 +109,8 @@ model TrucoGame {
   createdAt         DateTime   @default(now())
   finishedAt        DateTime?
 
-  members TrucoMember[]
+  members     TrucoMember[]
+  scoreEvents TrucoScoreEvent[]
 }
 
 model TrucoMember {
@@ -123,4 +124,19 @@ model TrucoMember {
 
   @@unique([gameId, playerId])
   @@index([gameId])
+}
+
+// Cada + o − que efectivamente cambio el puntaje, con su hora. pointsA y
+// pointsB de TrucoGame siguen siendo la fuente del marcador; esto es el
+// historial para dibujar el grafico de la partida.
+model TrucoScoreEvent {
+  id        String    @id @default(cuid())
+  gameId    String
+  team      TrucoTeam
+  delta     Int
+  createdAt DateTime  @default(now())
+
+  game TrucoGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId, createdAt])
 }

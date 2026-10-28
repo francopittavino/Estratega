@@ -31,7 +31,13 @@ base real. Si en algún momento hay dudas sobre exposición de ese chat,
 rotar la contraseña de la base (dashboard de Prisma/Vercel) y regenerar el
 token de Blob.
 
-## Estado actual (última sesión: 2026-09-12)
+## Estado actual (última sesión: 2026-10-28)
+
+**Cuarta sesión (2026-10-28)**: gráfico de línea de cómo fue cada partida,
+en El Estratega y en el truco (tanda 17). Para el truco hizo falta empezar a
+guardar el historial de puntos (tabla nueva `TrucoScoreEvent`, migración ya
+aplicada a producción). Las partidas de truco anteriores a esta sesión no
+tienen historial y el gráfico lo avisa en vez de dibujar.
 
 **Tercera sesión (2026-09-12)**: se rehizo el anotador de truco para que
 entre entero en la pantalla del celular (tanda 16). Los cigarrillos pasaron a
@@ -670,6 +676,58 @@ pena pedir que confirme con un hard-refresh antes de asumir que es un bug.
   borradas antes de commitear**), en la vista del que anota y en la del que
   mira (con el cartel de "Tomar el control" arriba, que también entra).
 
+**Tanda 17 — gráfico de la partida (El Estratega y truco):**
+
+- Pedido del usuario: un gráfico de línea 2D con las rondas en X y los puntos
+  en Y, una línea de color distinto por participante y, al final de cada
+  línea, un punto con la foto del jugador. Durante la partida y también
+  después de terminada.
+- **Componente único** `src/components/score-chart.tsx` (`ScoreChart`), sin
+  librerías: un `<svg>` con `viewBox="0 0 100 100"` y
+  `preserveAspectRatio="none"` que se estira al contenedor (los trazos
+  llevan `vector-effect: non-scaling-stroke`), y todo lo que no puede
+  estirarse (números de los ejes, fotos, puntitos, tooltip) va en HTML
+  posicionado en %.
+- **Colores**: paleta categórica de 8 (`SERIES_COLORS`), validada para
+  daltonismo contra `--card` con el validador de la skill de dataviz. El
+  color sigue al jugador, no al puesto: las series se pasan ordenadas por id
+  (orden en que se eligió a cada uno), no por puntaje.
+- **Las fotos van en una columna a la derecha** del gráfico, cada una a la
+  altura donde termina su línea, con un puntito de color en el final exacto
+  y una rayita que los une. Si varias líneas terminan cerca, las fotos se
+  separan lo justo (empujando hacia abajo y, si se salen, hacia arriba). La
+  primera versión ponía la foto sobre el punto y las corría a la izquierda
+  cuando se pisaban, pero con 7 jugadores cerca quedaban lejísimos de su
+  línea. Con muchos jugadores el gráfico crece de alto para que entren todas.
+- **Tooltip**: pasando el dedo o el mouse aparece una línea vertical y
+  cuánto tenía cada uno en ese momento, ordenado de mayor a menor.
+- **El Estratega**: sección "Cómo viene / Cómo fue la partida" debajo del
+  tablero, en `/partidas/[id]`. Se arma desde `RoundScore` (no hizo falta
+  tocar la base). La ronda abierta entra con lo que ya se cargó, así el
+  punto final se mueve en vivo (decisión del usuario).
+- **Truco**: botón "Gráfico" arriba, al lado de "Finalizar", que abre un
+  panel encima del anotador (decisión del usuario: no se toca la pantalla de
+  los 30 puntos). Lo ve cualquiera, también el espectador y con la partida
+  terminada. Una línea por equipo (con las fotos de todo el equipo al
+  final), en escalones, con la raya de 15 punteada.
+- **Eje X del truco = minutos de partida** (decisión del usuario, entre
+  "manos con un botón nuevo", "cada toque" y "tiempo"). Con la partida en
+  curso llega hasta "ahora", que se toma al abrir el panel y se corre cada
+  15 segundos.
+- **Historial del truco**: `addTrucoPoint` ahora corre en una transacción
+  que, si el `updateMany` movió el puntaje, crea un `TrucoScoreEvent`
+  (equipo, ±1, hora). Los toques que chocan con el tope no se registran, así
+  que la suma del historial siempre da el marcador. Si una partida arrancó
+  antes del historial, lo que falta se toma como que ya estaba al principio;
+  si no tiene ningún evento y sí puntos (las 4 viejas), el panel dice que es
+  de antes del gráfico.
+- La tabla para el lector de pantalla va en un `<div className="sr-only">`
+  y no con `sr-only` en la `<table>`: a una tabla no le aplica el ancho de
+  1px y ensanchaba la página en el celular (se vio probando).
+- Probado con una página temporal (borrada) y, en producción, con una
+  partida de truco de prueba con historial cargado a mano (borrada al
+  terminar). El Estratega se miró sobre partidas reales sin tocarlas.
+
 ### Falta para que funcione en producción
 
 Nada bloqueante. Lo que queda es menor/opcional:
@@ -693,7 +751,8 @@ Nada bloqueante. Lo que queda es menor/opcional:
 - Puntajes negativos o fuera de `QUICK_POINTS` en El Estratega (el usuario
   eligió solo botones rápidos, sin carga manual).
 - Deshacer más de una ronda atrás (solo se puede volver un paso).
-- En el truco no hay historial de manos ni "volver atrás" más allá del `−`.
+- En el truco no hay "volver atrás" más allá del `−`, y el historial que
+  guarda es de puntos con su hora, no de manos.
 - Los rankings de truco no muestran partidas jugadas ni porcentaje: el
   usuario pidió explícitamente **solo ganadas**.
 
@@ -803,6 +862,17 @@ Nada bloqueante. Lo que queda es menor/opcional:
   del anotador, lo que se achica son los cuadraditos, no se vuelve a scrollear.
 - **El `+` y el `−` van a los costados**, uno por equipo.
 
+### Decisiones de producto de la sesión 2026-10-28
+
+- **Gráfico de la partida en las dos**, en vivo y después de terminada.
+- **Truco: el eje X es el tiempo** (minutos desde que arrancó), sin agregar
+  un botón de "terminar mano" ni cambiar cómo se anota.
+- **Truco: una línea por equipo**, con las fotos de todos al final.
+- **Truco: el gráfico se abre con un botón**, en un panel encima del
+  anotador, para no perder los 30 puntos en una pantalla.
+- **El Estratega: la ronda abierta cuenta en el gráfico** a medida que se
+  cargan puntos.
+
 ## Decisiones técnicas y por qué
 
 - **`put()` de `@vercel/blob` siempre con `token: process.env.BLOB_READ_WRITE_TOKEN`
@@ -887,6 +957,15 @@ Nada bloqueante. Lo que queda es menor/opcional:
   `<svg>`, así que declararlos adentro habría dejado doce copias del mismo id
   en el DOM. Quien use `CigaretteSquare` tiene que montar también
   `CigaretteDefs` en la página.
+- **El historial del truco se escribe en la misma transacción que el
+  puntaje** y solo si el `updateMany` cambió algo. `pointsA`/`pointsB`
+  siguen siendo la fuente del marcador; `TrucoScoreEvent` es solo para el
+  gráfico.
+- **Para leer el reloj en un client component, en un handler o un
+  intervalo, nunca en el render**: `Date.now()` durante el render lo
+  rechaza la regla `react-hooks/purity`. Por eso el panel del gráfico del
+  truco recibe la hora en que se abrió (`setChartOpenedAt(Date.now())` en el
+  click).
 - **Credenciales reales solo en `.env` local**: cuando el usuario pasa
   secretos de producción por el chat (pasó en la tanda 3), van directo a
   `.env` (gitignorado), nunca a `.env.example` ni a ningún archivo
@@ -896,7 +975,7 @@ Nada bloqueante. Lo que queda es menor/opcional:
 
 ```
 prisma/schema.prisma          Player, Game, GameParticipant, Round, RoundScore,
-                               TrucoGame, TrucoMember
+                               TrucoGame, TrucoMember, TrucoScoreEvent
 src/lib/prisma.ts             singleton de PrismaClient
 src/lib/admin-password.ts     ADMIN_PASSWORD ("estratega") + assertAdminPassword()
 src/lib/owner.ts              cookie de dispositivo + isOwner/assertOwner (dueño de partida)
@@ -916,6 +995,7 @@ src/components/side-nav.tsx         hamburguesa flotante + menú en 3 secciones
 src/components/podium.tsx           podio animado del top 3 (home)
 src/components/game-board.tsx       UI del anotador de El Estratega (client component)
 src/components/truco-board.tsx      UI del anotador de truco + cartel de fin de partida
+src/components/score-chart.tsx      gráfico de línea de la partida (rondas o minutos)
 src/components/cigarette-tally.tsx  los cuadraditos de cigarrillos en SVG +
                                      CigaretteDefs (los degradés, una vez por página)
 src/components/new-game-form.tsx    selector de participantes de El Estratega

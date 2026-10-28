@@ -1,13 +1,21 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { CigaretteDefs, TallyBlock } from "@/components/cigarette-tally";
+import { ScoreChart, type ChartSeries } from "@/components/score-chart";
 import { addTrucoPoint, finishTrucoGame } from "@/lib/actions/truco";
 import { splitScore, TEAM_SIZE_SHORT, TRUCO_TARGET } from "@/lib/truco";
 
 type Member = { id: string; name: string; photoUrl: string | null };
 type Team = "A" | "B";
+
+// Cada toque que movió el puntaje, con su hora (ms), para el gráfico.
+type History = {
+  startedAt: number;
+  finishedAt: number | null;
+  events: { team: Team; delta: number; at: number }[];
+};
 
 type Props = {
   gameId: string;
@@ -19,6 +27,7 @@ type Props = {
   teamA: Member[];
   teamB: Member[];
   canScore: boolean;
+  history: History;
 };
 
 function teamLabel(members: Member[]) {
@@ -35,6 +44,7 @@ export function TrucoBoard({
   teamA,
   teamB,
   canScore,
+  history,
 }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -44,6 +54,9 @@ export function TrucoBoard({
     team: Team;
     reachedTarget: boolean;
   }>(null);
+  // Hora en que se abrió el gráfico (null = cerrado). Se toma en el click y
+  // no al dibujar, porque leer el reloj durante el render no es puro.
+  const [chartOpenedAt, setChartOpenedAt] = useState<number | null>(null);
 
   // El + y el - se ven al toque; cuando el server responde, React vuelve a
   // tomar los valores reales que llegan por props.
@@ -103,21 +116,30 @@ export function TrucoBoard({
           </p>
         </div>
         {/* Arriba y chiquito: abajo no entra sin robarle alto al anotador. */}
-        {editable && (
+        <div className="shrink-0 flex gap-1.5">
           <button
             type="button"
-            disabled={isPending}
-            onClick={() =>
-              setAsking({
-                team: points.A >= points.B ? "A" : "B",
-                reachedTarget: false,
-              })
-            }
-            className="shrink-0 border border-primary text-primary rounded-md px-3 py-1.5 text-xs font-medium hover:bg-primary/10 transition-colors disabled:opacity-60"
+            onClick={() => setChartOpenedAt(Date.now())}
+            className="border border-border text-muted rounded-md px-3 py-1.5 text-xs font-medium hover:border-primary/50 hover:text-foreground transition-colors"
           >
-            Finalizar
+            Gráfico
           </button>
-        )}
+          {editable && (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() =>
+                setAsking({
+                  team: points.A >= points.B ? "A" : "B",
+                  reachedTarget: false,
+                })
+              }
+              className="shrink-0 border border-primary text-primary rounded-md px-3 py-1.5 text-xs font-medium hover:bg-primary/10 transition-colors disabled:opacity-60"
+            >
+              Finalizar
+            </button>
+          )}
+        </div>
       </div>
 
       {error && <p className="shrink-0 text-sm text-red-400">{error}</p>}
@@ -159,6 +181,19 @@ export function TrucoBoard({
         )}
       </div>
 
+      {chartOpenedAt !== null && (
+        <ChartDialog
+          history={history}
+          pointsA={pointsA}
+          pointsB={pointsB}
+          teamA={teamA}
+          teamB={teamB}
+          inProgress={inProgress}
+          openedAt={chartOpenedAt}
+          onClose={() => setChartOpenedAt(null)}
+        />
+      )}
+
       {asking && (
         <FinishDialog
           members={asking.team === "A" ? teamA : teamB}
@@ -168,6 +203,103 @@ export function TrucoBoard({
           onCancel={() => setAsking(null)}
         />
       )}
+    </div>
+  );
+}
+
+// El gráfico va en un panel encima del anotador: abajo no hay lugar, porque
+// los 30 puntos tienen que entrar en la pantalla sin scrollear.
+function ChartDialog({
+  history,
+  pointsA,
+  pointsB,
+  teamA,
+  teamB,
+  inProgress,
+  openedAt,
+  onClose,
+}: {
+  history: History;
+  pointsA: number;
+  pointsB: number;
+  teamA: Member[];
+  teamB: Member[];
+  inProgress: boolean;
+  openedAt: number;
+  onClose: () => void;
+}) {
+  // Con la partida en curso el eje de tiempo llega hasta "ahora", y ahora
+  // se va corriendo aunque nadie toque nada.
+  const [now, setNow] = useState(openedAt);
+  useEffect(() => {
+    if (!inProgress) return;
+    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(timer);
+  }, [inProgress]);
+
+  const minutes = (at: number) => (at - history.startedAt) / 60_000;
+  const lastEventAt = history.events.at(-1)?.at ?? history.startedAt;
+  const endAt = history.finishedAt ?? Math.max(now, lastEventAt);
+
+  function teamSeries(team: Team, members: Member[], current: number): ChartSeries {
+    const events = history.events.filter((e) => e.team === team);
+    // Si la partida arrancó antes de que existiera el historial, lo que no
+    // está registrado se toma como que ya estaba al principio.
+    let y = current - events.reduce((sum, e) => sum + e.delta, 0);
+    const points = [{ x: 0, y }];
+    for (const e of events) {
+      y += e.delta;
+      points.push({ x: minutes(e.at), y });
+    }
+    return { id: team, label: teamLabel(members), members, points };
+  }
+
+  // Una partida vieja, de antes del gráfico, con puntos pero sin historial:
+  // no hay nada honesto para dibujar.
+  const noHistory = history.events.length === 0 && pointsA + pointsB > 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border rounded-xl shadow-xl p-4 w-full max-w-lg flex flex-col gap-3"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-base font-semibold">
+            {inProgress ? "Cómo viene la partida" : "Cómo fue la partida"}
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar gráfico"
+            className="h-8 w-8 rounded-md text-muted hover:text-foreground hover:bg-background transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+        {noHistory ? (
+          <p className="text-sm text-muted">
+            Esta partida es de antes de que existiera el gráfico, así que no
+            tiene guardado cómo se fueron sumando los puntos.
+          </p>
+        ) : (
+          <ScoreChart
+            series={[
+              teamSeries("A", teamA, pointsA),
+              teamSeries("B", teamB, pointsB),
+            ]}
+            xKind="minutes"
+            xMax={minutes(endAt)}
+            yMax={TRUCO_TARGET}
+            yGuide={TRUCO_TARGET / 2}
+            step
+            height={260}
+          />
+        )}
+      </div>
     </div>
   );
 }
